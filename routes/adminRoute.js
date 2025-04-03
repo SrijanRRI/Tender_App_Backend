@@ -5,12 +5,10 @@ import {
   rejectUser,
   getApprovedTransportUsers
 } from '../controller/adminController.js'
-import { jwtAuth, isAdmin } from '../middleware/jwtAuth.js';
 
 const adminRouter = express.Router();
 
-// Apply authentication and admin middleware to all routes
-adminRouter.use(jwtAuth, isAdmin);
+
 
 // Admin routes for user approval
 adminRouter.get('/pending-approvals', getPendingApprovals);
