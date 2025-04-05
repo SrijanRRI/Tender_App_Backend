@@ -9,13 +9,16 @@ const tenderSchema = new mongoose.Schema(
     },
 
     dateOfDelivery: { type: Date, required: true },
+    closeDate: { type: Date, required: true },
+
     dispatchLocation: { type: String, required: true },
     address: { type: String, required: true },
     pincode: { type: String, required: true },
 
     materials: [
       {
-        materialDetails: { type: String, required: true },
+        material: { type: String, required: true }, // ✅ Main material
+        subMaterial: { type: String, default: "", trim: true }, // ✅ Optional sub-material, but always present
         weight: { type: Number, required: true },
         quantity: { type: Number, required: true },
       },
@@ -24,13 +27,24 @@ const tenderSchema = new mongoose.Schema(
     totalWeight: { type: Number, required: true },
     totalQuantity: { type: Number, required: true },
 
+    remarks: { type: String, default: "", trim: true },
+
     status: {
       type: String,
       enum: ["open", "quoted", "finalized", "closed"],
       default: "open",
     },
 
+    transporters: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+        required: true,
+      },
+    ],
+
     quotations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Quotation" }],
+
     selectedQuotation: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quotation",

@@ -1,15 +1,37 @@
-// routes/tenderRoutes.js
-import express from 'express';
-import { createTender, getTenderQuotations, finalizeTender } from '../controller/tenderController.js';
-import { submitQuotation } from '../controller/quotationController.js';
-import jwtAuth, { isApproved } from '../middleware/jwtAuth.js';
+import express from "express";
+import {
+  createTender,
+  getAllTendersByRRUser,
+  getTendersForTransporter,
+  getSingleTender,
+  getTenderQuotations,
+  finalizeTender,
+  deleteTender
+} from "../controller/tenderController.js";
 
-const tenderRouter = express.Router();
+import {jwtAuth} from "../middleware/jwtAuth.js";
 
-tenderRouter.post('/tenders', jwtAuth, isApproved, createTender);
-tenderRouter.get('/tenders/:id/quotations', jwtAuth, isApproved, getTenderQuotations);
-tenderRouter.post('/tenders/:id/finalize', jwtAuth, isApproved, finalizeTender);
-tenderRouter.post('/tenders/:id/quotations', jwtAuth, isApproved, submitQuotation);
+const router = express.Router();
 
-export default tenderRouter;
-2
+// ✅ 1. Create a new tender (RR user)
+router.post("/create-tender", jwtAuth, createTender);
+
+// ✅ 2. Get all tenders created by RR user
+router.get("/my-tenders", jwtAuth, getAllTendersByRRUser);
+
+// ✅ 3. Get all tenders assigned to a transporter
+router.get("/assigned", jwtAuth, getTendersForTransporter);
+
+// ✅ 4. Get single tender by ID
+router.get("/:id", jwtAuth, getSingleTender);
+
+// ✅ 5. Get quotations for a tender
+router.get("/quotations/:id", jwtAuth, getTenderQuotations);
+
+// ✅ 6. Finalize a tender (choose a quotation)
+router.put("/finalize/:id", jwtAuth, finalizeTender);
+
+// ✅ 7. Delete a tender (by RR user)
+router.delete("/:id", jwtAuth, deleteTender);
+
+export default router;

@@ -1,6 +1,6 @@
 // controllers/quotationController.js
-import Quotation from "../models/tenderSchema.js";
-import Tender from "../models/quotationSchema.js";
+import Quotation from "../models/quotationSchema.js";
+import Tender from "../models/tenderSchema.js";
 
 export const submitQuotation = async (req, res) => {
   try {
