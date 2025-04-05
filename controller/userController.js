@@ -5,71 +5,74 @@ import emailValidator from "email-validator"
 import nodemailer from "nodemailer"
 
 export const login = async (req, res) => {
-    const { email, password } = req.body;
-  
-    if (!email || !password) {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email and password are required"
+    });
+  }
+
+  try {
+    // Find user and select password field explicitly
+    const user = await userModel.findOne({ email }).select('+password');
+
+    if (!user) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required"
+        message: "User not found 🙅"
       });
     }
-  
-    try {
-      // Find user and select password field explicitly
-      const user = await userModel.findOne({ email }).select('+password');
-  
-      if (!user) {
-        return res.status(400).json({
-          success: false,
-          message: "User not found 🙅"
-        });
-      }
-  
-      // For transportUsers, check if they're approved
-      if (user.role === 'transportUser' && !user.isApproved) {
-        return res.status(403).json({
-          success: false,
-          message: "Your account is pending admin approval"
-        });
-      }
-  
-      // Compare password
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid credentials"
-        });
-      }
-  
-      // Generate token
-      const token = user.jwtToken();
-      
-      // Create cookie options
-      const cookieOptions = {
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        httpOnly: true
-      };
-  
-      // Sending response without password
-      const userData = user.toObject();
-      delete userData.password;
-  
-      return res.status(200)
-        .cookie("token", token, cookieOptions)
-        .json({
-          success: true,
-          message: "Login successful",
-          data: userData,
-          token
-        });
-    } catch (error) {
+
+    // For transportUsers, check if they're approved
+    if (user.role === 'transportUser' && !user.isApproved) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is pending admin approval"
+      });
+    }
+
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return res.status(400).json({
         success: false,
-        message: error.message
+        message: "Invalid credentials"
       });
     }
-  };
+
+    // Generate token (include isApproved if needed in middleware)
+    const token = user.jwtToken();
+
+    // 🔐 Cookie options for deployment
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true in production (HTTPS)
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax", // "None" allows cross-origin with credentials
+      maxAge: 24 * 60 * 60 * 1000 // 1 day
+    };
+
+    // Remove password before sending user data
+    const userData = user.toObject();
+    delete userData.password;
+
+    return res.status(200)
+      .cookie("token", token, cookieOptions)
+      .json({
+        success: true,
+        message: "Login successful",
+        data: userData
+      });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error: " + error.message
+    });
+  }
+};
+
 
 
 

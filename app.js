@@ -12,7 +12,7 @@ import cors from 'cors';
 const app = express();
 connectToDb()
 
-app.use(cors({ origin: [process.env.CLIENT_URL], credentials: true }));
+app.use(cors({ origin: [process.env.CLIENT_URL] , credentials: true }));
 
 
 app.use(express.json()); // Built-in middleware
