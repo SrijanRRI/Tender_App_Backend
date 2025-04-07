@@ -215,19 +215,19 @@ export const deleteTender = async (req, res) => {
 
 // ✅ Get Quotation History for Transporter
 
+import mongoose from "mongoose";
+
 export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
-    const transporterId = req.user.id;
+    const transporterId = new mongoose.Types.ObjectId(req.user.id);
 
-    // Step 1: Get all quotations by the logged-in transporter
-    const quotations = await Quotation.find({ customer: transporterId })
-      .populate("tender") // Pull in all tender details
+    const quotations = await Quotation.find({ transportUser: transporterId })
+      .populate("tender")
       .sort({ createdAt: -1 });
 
-    // Step 2: Format & attach signed file URLs
     const formatted = quotations.map((q) => {
       const signedFiles = (q.files || []).map((file) => {
-        const key = file.url?.split("/").pop(); // or file.key
+        const key = file.url?.split("/").pop();
         return {
           ...file,
           url: generateSignedUrl(key),
@@ -259,6 +259,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
     res.status(200).json({ success: true, data: formatted });
 
   } catch (error) {
+    console.error("Error fetching quotation history:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
