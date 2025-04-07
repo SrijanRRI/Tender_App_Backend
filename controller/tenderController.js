@@ -183,3 +183,56 @@ export const deleteTender = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+
+// ✅ Get Quotation History for Transporter
+
+export const getQuotationHistoryForTransporter = async (req, res) => {
+  try {
+    const transporterId = req.user.id;
+
+    // Step 1: Get all quotations by the logged-in transporter
+    const quotations = await Quotation.find({ customer: transporterId })
+      .populate("tender") // Pull in all tender details
+      .sort({ createdAt: -1 });
+
+    // Step 2: Format & attach signed file URLs
+    const formatted = quotations.map((q) => {
+      const signedFiles = (q.files || []).map((file) => {
+        const key = file.url?.split("/").pop(); // or file.key
+        return {
+          ...file,
+          url: generateSignedUrl(key),
+        };
+      });
+
+      const isSelected = q.tender?.selectedQuotation?.toString() === q._id.toString();
+
+      return {
+        _id: q._id,
+        tenderId: q.tender?._id,
+        price: q.price,
+        vehicleNumber: q.vehicleNumber,
+        files: signedFiles,
+        createdAt: q.createdAt,
+        selected: isSelected,
+        tender: {
+          dispatchLocation: q.tender?.dispatchLocation,
+          address: q.tender?.address,
+          dateOfDelivery: q.tender?.dateOfDelivery,
+          closeDate: q.tender?.closeDate,
+          status: q.tender?.status,
+          finalPrice: q.tender?.finalPrice,
+          remarks: q.tender?.remarks,
+        }
+      };
+    });
+
+    res.status(200).json({ success: true, data: formatted });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
