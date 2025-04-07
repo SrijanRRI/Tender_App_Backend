@@ -1,5 +1,6 @@
 import Tender from "../models/tenderSchema.js";
 import Quotation from "../models/quotationSchema.js";
+import { generateSignedUrl } from "../utils/minioClient.js";
 
 // ✅ 1. Create Tender
 
@@ -114,12 +115,31 @@ export const getTendersForTransporter = async (req, res) => {
 // ✅ 5. Get Quotations for a Tender
 export const getTenderQuotations = async (req, res) => {
   try {
-    const tender = await Tender.findById(req.params.id).populate("quotations");
-    if (!tender)
+    const tender = await Tender.findById(req.params.id)
+      .populate("quotations");
+
+    if (!tender) {
       return res.status(404).json({ success: false, message: "Tender not found" });
-    console.log(tender.quotations);
-    res.status(200).json({ success: true, quotations: tender.quotations });
-    
+    }
+
+    // Map through quotations and attach signed file URLs
+    const quotationsWithSignedFiles = tender.quotations.map((quotation) => {
+      const signedFiles = (quotation.files || []).map((file) => {
+        const key = file.url?.split("/").pop(); // or file.key if you store just the filename
+        return {
+          ...file,
+          url: generateSignedUrl(key),
+        };
+      });
+
+      return {
+        ...quotation.toObject(),
+        files: signedFiles,
+      };
+    });
+
+    res.status(200).json({ success: true, quotations: quotationsWithSignedFiles });
+
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
