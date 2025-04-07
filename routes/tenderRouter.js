@@ -6,7 +6,8 @@ import {
   getSingleTender,
   getTenderQuotations,
   finalizeTender,
-  deleteTender
+  deleteTender,
+  getQuotationHistoryForTransporter
 } from "../controller/tenderController.js";
 
 import {jwtAuth} from "../middleware/jwtAuth.js";
@@ -33,5 +34,7 @@ router.put("/finalize/:id", jwtAuth, finalizeTender);
 
 // ✅ 7. Delete a tender (by RR user)
 router.delete("/:id", jwtAuth, deleteTender);
+
+router.get("/quotation/history", jwtAuth, getQuotationHistoryForTransporter);
 
 export default router;
