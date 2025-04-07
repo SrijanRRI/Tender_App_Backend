@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+const fileSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  originalName: { type: String },
+  mimetype: { type: String },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
 const quotationSchema = new mongoose.Schema({
   tender: {
     type: mongoose.Schema.Types.ObjectId,
@@ -13,7 +20,7 @@ const quotationSchema = new mongoose.Schema({
   },
   price: { type: Number, required: true },
   vehicleNumber: { type: String, required: true },
-  files: [String],
+  files: [fileSchema], // Array of file metadata
   createdAt: { type: Date, default: Date.now },
 });
 
