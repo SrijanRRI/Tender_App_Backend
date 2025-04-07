@@ -96,21 +96,48 @@ export const getAllTendersByRRUser = async (req, res) => {
   }
 };
 
-// ✅ 4. Get Tenders Assigned to a Transporter
+
+// ✅ 4. Get Tenders Assigned to a Transporter (excluding already quoted ones)
 export const getTendersForTransporter = async (req, res) => {
   try {
-    const tenders = await Tender.find({
-      transporters: req.user.id,
-      status: "open",
-    })
-      .sort({ createdAt: -1 })
-      .populate("createdBy", "name email");
+    const transporterId = req.user.id;
 
-    res.status(200).json({ success: true, data: tenders });
+    // Step 1: Get all tenders assigned to this transporter and that are still open
+    const tenders = await Tender.find({
+      transporters: transporterId,
+      status: "open",
+    }).sort({ createdAt: -1 });
+
+    // Step 2: Get quotations submitted by the transporter
+    const transporterQuotations = await Quotation.find({
+      customer: transporterId,
+    }).select("tender");
+
+    const quotedTenderIds = new Set(
+      transporterQuotations.map((q) => q.tender.toString())
+    );
+
+    // Step 3: Attach hasQuoted flag
+    const tendersWithQuoteStatus = tenders.map((tender) => {
+      const tenderObj = tender.toObject();
+      tenderObj.hasQuoted = quotedTenderIds.has(tender._id.toString());
+      return tenderObj;
+    });
+
+    // Step 4: Populate createdBy field
+    await Tender.populate(tendersWithQuoteStatus, {
+      path: "createdBy",
+      select: "name email",
+    });
+
+    res.status(200).json({ success: true, data: tendersWithQuoteStatus });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 // ✅ 5. Get Quotations for a Tender
 export const getTenderQuotations = async (req, res) => {
