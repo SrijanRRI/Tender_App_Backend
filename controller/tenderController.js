@@ -117,8 +117,9 @@ export const getTenderQuotations = async (req, res) => {
     const tender = await Tender.findById(req.params.id).populate("quotations");
     if (!tender)
       return res.status(404).json({ success: false, message: "Tender not found" });
-
+    console.log(tender.quotations);
     res.status(200).json({ success: true, quotations: tender.quotations });
+    
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
