@@ -89,7 +89,7 @@ export const approveUser = async (req, res) => {
 
         <p>Your transport user account has been <strong>approved</strong> by the admin. You can now log in to access your dashboard:</p>
 
-        <p><a href="http://localhost:5173" style="color: #007bff;">Click here to login</a></p>
+        <p><a href="https://logiyatra.rrispat.in" style="color: #007bff;">Click here to login</a></p>
 
         <p>Thank you for your patience.</p>
 
