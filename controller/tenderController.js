@@ -12,9 +12,23 @@ import { sendMail } from "../utils/sendMail.js"; // You must have this utility c
 
 export const createTender = async (req, res) => {
   try {
-    const { materials, transporters, remarks, closeDate } = req.body;
+    const { materials, transporters, remarks, closeDate, deliveryWindow,totalWeight,totalQuantity } = req.body;
 
     console.log("Tender creation payload:", req.body);
+
+    // ✅ Validate delivery window
+    if (
+      !deliveryWindow ||
+      !deliveryWindow.from ||
+      !deliveryWindow.to ||
+      isNaN(Date.parse(deliveryWindow.from)) ||
+      isNaN(Date.parse(deliveryWindow.to))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid delivery date range is required",
+      });
+    }
 
     // ✅ Validate materials
     if (!materials || !Array.isArray(materials) || materials.length === 0) {
@@ -24,13 +38,11 @@ export const createTender = async (req, res) => {
       });
     }
 
-    let totalWeight = 0;
-    let totalQuantity = 0;
+  
 
     // ✅ Normalize material fields
     const normalizedMaterials = materials.map((item) => {
-      totalWeight += item.weight;
-      totalQuantity += item.quantity;
+      
 
       return {
         material: item.material,
@@ -49,12 +61,16 @@ export const createTender = async (req, res) => {
       totalQuantity,
       transporters,
       remarks: remarks || "",
+      deliveryWindow: {
+        from: new Date(deliveryWindow.from),
+        to: new Date(deliveryWindow.to),
+      },
       closeDate,
     });
 
     await tender.save();
 
-    // ✅ Fetch emails of assigned transporters
+    // ✅ Fetch transporter emails
     const transporterUsers = await User.find({
       _id: { $in: transporters.map(id => new mongoose.Types.ObjectId(id)) },
     });
@@ -68,7 +84,7 @@ export const createTender = async (req, res) => {
       <h2>New Tender Assigned</h2>
       <p><strong>Dispatch Location:</strong> ${tender.dispatchLocation}</p>
       <p><strong>Address:</strong> ${tender.address}</p>
-      <p><strong>Date of Delivery:</strong> ${new Date(tender.dateOfDelivery).toLocaleDateString()}</p>
+      <p><strong>Delivery Window:</strong> ${new Date(tender.deliveryWindow.from).toLocaleDateString()} - ${new Date(tender.deliveryWindow.to).toLocaleDateString()}</p>
       <p><strong>Close Date:</strong> ${new Date(tender.closeDate).toLocaleDateString()}</p>
       <h4>Materials</h4>
       <ul>
@@ -287,10 +303,12 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
     const transporterId = new mongoose.Types.ObjectId(req.user.id);
 
+    // ✅ Get all quotations made by the logged-in transporter
     const quotations = await Quotation.find({ transportUser: transporterId })
       .populate("tender")
       .sort({ createdAt: -1 });
 
+    // ✅ Format response
     const formatted = quotations.map((q) => {
       const signedFiles = (q.files || []).map((file) => {
         const key = file.url?.split("/").pop();
@@ -313,7 +331,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
         tender: {
           dispatchLocation: q.tender?.dispatchLocation,
           address: q.tender?.address,
-          dateOfDelivery: q.tender?.dateOfDelivery,
+          deliveryWindow: q.tender?.deliveryWindow || { from: null, to: null },
           closeDate: q.tender?.closeDate,
           status: q.tender?.status,
           finalPrice: q.tender?.finalPrice,
@@ -333,15 +351,15 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
   }
 };
 
-
-
 //all finalized tenders 
+
+
 
 export const getAllFinalizedTendersWithQuotations = async (req, res) => {
   try {
     const rrUserId = req.user.id;
 
-    // 1. Get finalized tenders created by this RR user
+    // ✅ Get all finalized tenders created by this RR user
     const finalizedTenders = await Tender.find({
       createdBy: rrUserId,
       status: "finalized",
@@ -356,7 +374,7 @@ export const getAllFinalizedTendersWithQuotations = async (req, res) => {
     const results = [];
 
     for (const tender of finalizedTenders) {
-      // 2. Get all quotations for this tender
+      // ✅ Get all quotations for this tender
       const quotations = await Quotation.find({ tender: tender._id })
         .populate("transportUser", "name email")
         .sort({ createdAt: -1 });
@@ -387,7 +405,7 @@ export const getAllFinalizedTendersWithQuotations = async (req, res) => {
           _id: tender._id,
           dispatchLocation: tender.dispatchLocation,
           address: tender.address,
-          dateOfDelivery: tender.dateOfDelivery,
+          deliveryWindow: tender.deliveryWindow, // ✅ Updated from dateOfDelivery
           closeDate: tender.closeDate,
           remarks: tender.remarks,
           status: tender.status,

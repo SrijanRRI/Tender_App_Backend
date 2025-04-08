@@ -8,17 +8,21 @@ const tenderSchema = new mongoose.Schema(
       required: true,
     },
 
-    dateOfDelivery: { type: Date, required: true },
-    closeDate: { type: Date, required: true },
+    // ✅ Replacing single date with delivery window (range)
+    deliveryWindow: {
+      from: { type: Date, required: true },
+      to: { type: Date, required: true },
+    },
 
+    closeDate: { type: Date, required: true },
     dispatchLocation: { type: String, required: true },
     address: { type: String, required: true },
     pincode: { type: String, required: true },
 
     materials: [
       {
-        material: { type: String, required: true }, // ✅ Main material
-        subMaterial: { type: String, default: "", trim: true }, // ✅ Optional sub-material, but always present
+        material: { type: String, required: true },
+        subMaterial: { type: String, default: "", trim: true },
         weight: { type: Number, required: true },
         quantity: { type: Number, required: true },
       },
