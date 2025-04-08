@@ -23,8 +23,8 @@ const tenderSchema = new mongoose.Schema(
       {
         material: { type: String, required: true },
         subMaterial: { type: String, default: "", trim: true },
-        weight: { type: Number, required: true },
-        quantity: { type: Number, required: true },
+        weight: { type: Number },
+        quantity: { type: Number },
       },
     ],
 
