@@ -303,12 +303,17 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
     const transporterId = new mongoose.Types.ObjectId(req.user.id);
 
-    // ✅ Get all quotations made by the logged-in transporter
+    // ✅ Get all quotations by this transporter, populate tender + its creator
     const quotations = await Quotation.find({ transportUser: transporterId })
-      .populate("tender")
+      .populate({
+        path: "tender",
+        populate: {
+          path: "createdBy",
+          select: "name email"
+        }
+      })
       .sort({ createdAt: -1 });
 
-    // ✅ Format response
     const formatted = quotations.map((q) => {
       const signedFiles = (q.files || []).map((file) => {
         const key = file.url?.split("/").pop();
@@ -318,7 +323,8 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
         };
       });
 
-      const isSelected = q.tender?.selectedQuotation?.toString() === q._id.toString();
+      const isSelected =
+        q.tender?.selectedQuotation?.toString() === q._id.toString();
 
       return {
         _id: q._id,
@@ -329,6 +335,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
         createdAt: q.createdAt,
         selected: isSelected,
         tender: {
+          _id: q.tender?._id,
           dispatchLocation: q.tender?.dispatchLocation,
           address: q.tender?.address,
           deliveryWindow: q.tender?.deliveryWindow || { from: null, to: null },
@@ -338,7 +345,8 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
           remarks: q.tender?.remarks,
           materials: q.tender?.materials || [],
           totalWeight: q.tender?.totalWeight,
-          totalQuantity: q.tender?.totalQuantity
+          totalQuantity: q.tender?.totalQuantity,
+          createdBy: q.tender?.createdBy || null // ✅ now includes name, email, and _id
         }
       };
     });
