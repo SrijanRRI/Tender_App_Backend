@@ -220,21 +220,39 @@ export const getTendersForTransporter = async (req, res) => {
 
     // Step 2: Get quotations submitted by the transporter
     const transporterQuotations = await Quotation.find({
-      customer: transporterId,
+      transportUser: transporterId,
     }).select("tender");
 
     const quotedTenderIds = new Set(
       transporterQuotations.map((q) => q.tender.toString())
     );
 
-    // Step 3: Attach hasQuoted flag
+    // Step 3: Fetch all quotations for these tenders
+    const tenderIds = tenders.map(t => t._id);
+    const allQuotations = await Quotation.find({
+      tender: { $in: tenderIds }
+    }).populate("transportUser", "name email");
+
+    // Group quotations by tender ID
+    const quotationsByTender = {};
+    for (const q of allQuotations) {
+      const tid = q.tender.toString();
+      if (!quotationsByTender[tid]) quotationsByTender[tid] = [];
+      quotationsByTender[tid].push({
+        _id: q._id,
+        transportUser: q.transportUser,
+      });
+    }
+
+    // Step 4: Attach hasQuoted flag and quotations[]
     const tendersWithQuoteStatus = tenders.map((tender) => {
       const tenderObj = tender.toObject();
       tenderObj.hasQuoted = quotedTenderIds.has(tender._id.toString());
+      tenderObj.quotations = quotationsByTender[tender._id.toString()] || [];
       return tenderObj;
     });
 
-    // Step 4: Populate createdBy field
+    // Step 5: Populate createdBy field
     await Tender.populate(tendersWithQuoteStatus, {
       path: "createdBy",
       select: "name email",
