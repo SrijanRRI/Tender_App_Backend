@@ -1,0 +1,37 @@
+# Use the official Node 18 Alpine image
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies without devDependencies
+RUN npm install --omit=dev
+
+# Copy application source code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=8000
+ENV MONGO_URI=mongodb://192.168.13.84/transportHira
+ENV SMTP_HOST=smtp.gmail.com
+ENV SMTP_USER=techsupport@rrispat.com 
+ENV SMTP_PASS=kjdgsyrnkvdmcugw
+ENV CLIENT_URL=https://logiyatra.rrispat.in
+ENV SECRET=98a09ad7dasd6sfd4d5sd7fokjnu
+
+# MinIO configuration
+ENV MINIO_ENDPOINT=192.168.13.62
+ENV MINIO_PORT=9000
+ENV MINIO_ACCESS_KEY=uXgiyxKRlviRvIDvolPX
+ENV MINIO_SECRET_KEY=vCyBd3GQtRFtt4mSjrWS5D2mJYhjkP2tuGJzeXTi
+ENV MINIO_BUCKET=tenderrr
+
+# Expose your app port
+EXPOSE ${PORT}
+
+# Run the app with node (not nodemon)
+CMD ["node", "index.js"]

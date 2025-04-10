@@ -4,8 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "build": "webpack --config webpack.config.mjs",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js",
+    "start": "node dist/server.cjs",
     "dev": "nodemon index.js"
   },
   "keywords": [],

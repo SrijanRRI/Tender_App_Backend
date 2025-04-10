@@ -5,14 +5,19 @@ import mongoose from "mongoose";
 import User from "../models/userSchema.js"; // Replace with your actual user model path
 import { sendMail } from "../utils/sendMail.js"; // You must have this utility created
 
-
-
-
 //Create Tender
 
 export const createTender = async (req, res) => {
   try {
-    const { materials, transporters, remarks, closeDate, deliveryWindow,totalWeight,totalQuantity } = req.body;
+    const {
+      materials,
+      transporters,
+      remarks,
+      closeDate,
+      deliveryWindow,
+      totalWeight,
+      totalQuantity,
+    } = req.body;
 
     console.log("Tender creation payload:", req.body);
 
@@ -38,12 +43,8 @@ export const createTender = async (req, res) => {
       });
     }
 
-  
-
     // ✅ Normalize material fields
     const normalizedMaterials = materials.map((item) => {
-      
-
       return {
         material: item.material,
         subMaterial: item.subMaterial || "",
@@ -67,15 +68,16 @@ export const createTender = async (req, res) => {
       },
       closeDate,
     });
+    console.log(tender);
 
     await tender.save();
 
     // ✅ Fetch transporter emails
     const transporterUsers = await User.find({
-      _id: { $in: transporters.map(id => new mongoose.Types.ObjectId(id)) },
+      _id: { $in: transporters.map((id) => new mongoose.Types.ObjectId(id)) },
     });
 
-    const transporterEmails = transporterUsers.map(user => user.email);
+    const transporterEmails = transporterUsers.map((user) => user.email);
 
     // ✅ Prepare email content
     const subject = "📦 New Tender Assigned to You - RR ISPAT";
@@ -84,17 +86,39 @@ export const createTender = async (req, res) => {
       <h2>New Tender Assigned</h2>
       <p><strong>Dispatch Location:</strong> ${tender.dispatchLocation}</p>
       <p><strong>Address:</strong> ${tender.address}</p>
-      <p><strong>Delivery Window:</strong> ${new Date(tender.deliveryWindow.from).toLocaleDateString()} - ${new Date(tender.deliveryWindow.to).toLocaleDateString()}</p>
-      <p><strong>Close Date:</strong> ${new Date(tender.closeDate).toLocaleDateString()}</p>
+      <p><strong>Delivery Window:</strong> ${new Date(
+        tender.deliveryWindow.from
+      ).toLocaleDateString()} - ${new Date(
+      tender.deliveryWindow.to
+    ).toLocaleDateString()}</p>
+      <p><strong>Close Date:</strong> ${new Date(
+        tender.closeDate
+      ).toLocaleDateString()}</p>
       <h4>Materials</h4>
-      <ul>
-        ${tender.materials
-          .map(
-            (mat) =>
-              `<li>${mat.material} ${mat.subMaterial ? `(${mat.subMaterial})` : ""} - ${mat.weight}kg × ${mat.quantity} pcs</li>`
-          )
-          .join("")}
-      </ul>
+     <ul>
+  ${tender.materials
+    .map((mat) => {
+      let line = `${mat.material}`; // always include material
+
+      if (mat.subMaterial) {
+        line += ` (${mat.subMaterial})`;
+      }
+
+      const weightDisplay =
+        mat.weight && !isNaN(mat.weight) ? `${mat.weight}kg` : "";
+      const qtyDisplay =
+        mat.quantity && !isNaN(mat.quantity) ? `× ${mat.quantity} pcs` : "";
+
+      const detailLine = [weightDisplay, qtyDisplay].filter(Boolean).join(" ");
+
+      if (detailLine) {
+        line += ` - ${detailLine}`;
+      }
+
+      return `<li>${line}</li>`;
+    })
+    .join("")}
+</ul>
       <p><strong>Remarks:</strong> ${tender.remarks || "None"}</p>
       <br/>
       <p>📝 Please log in to the Transporter Dashboard to submit your quotation.</p>
@@ -121,7 +145,6 @@ export const createTender = async (req, res) => {
   }
 };
 
-
 // ✅ 2. Finalize Tender
 export const finalizeTender = async (req, res) => {
   try {
@@ -129,7 +152,9 @@ export const finalizeTender = async (req, res) => {
 
     const tender = await Tender.findById(req.params.id);
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     // ✅ Prevent re-finalization
@@ -150,7 +175,9 @@ export const finalizeTender = async (req, res) => {
     });
 
     if (!quotation) {
-      return res.status(400).json({ success: false, message: "Invalid quotation" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid quotation" });
     }
 
     tender.selectedQuotation = quotation._id;
@@ -159,12 +186,13 @@ export const finalizeTender = async (req, res) => {
 
     await tender.save();
 
-    res.status(200).json({ success: true, message: "Tender finalized", tender });
+    res
+      .status(200)
+      .json({ success: true, message: "Tender finalized", tender });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-
 
 // ✅ 3. Get All Tenders Created by RR User
 export const getAllTendersByRRUser = async (req, res) => {
@@ -178,7 +206,6 @@ export const getAllTendersByRRUser = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // ✅ 4. Get Tenders Assigned to a Transporter (excluding already quoted ones)
 export const getTendersForTransporter = async (req, res) => {
@@ -214,22 +241,20 @@ export const getTendersForTransporter = async (req, res) => {
     });
 
     res.status(200).json({ success: true, data: tendersWithQuoteStatus });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
-
 // ✅ 5. Get Quotations for a Tender
 export const getTenderQuotations = async (req, res) => {
   try {
-    const tender = await Tender.findById(req.params.id)
-      .populate("quotations");
+    const tender = await Tender.findById(req.params.id).populate("quotations");
 
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     // Map through quotations and attach signed file URLs
@@ -248,8 +273,9 @@ export const getTenderQuotations = async (req, res) => {
       };
     });
 
-    res.status(200).json({ success: true, quotations: quotationsWithSignedFiles });
-
+    res
+      .status(200)
+      .json({ success: true, quotations: quotationsWithSignedFiles });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -264,7 +290,9 @@ export const getSingleTender = async (req, res) => {
       .populate("selectedQuotation");
 
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     res.status(200).json({ success: true, data: tender });
@@ -279,7 +307,9 @@ export const deleteTender = async (req, res) => {
     const tender = await Tender.findById(req.params.id);
 
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     if (tender.createdBy.toString() !== req.user.id) {
@@ -288,16 +318,15 @@ export const deleteTender = async (req, res) => {
 
     await Tender.findByIdAndDelete(req.params.id);
 
-    res.status(200).json({ success: true, message: "Tender deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Tender deleted successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
-
 // ✅ Get Quotation History for Transporter
-
 
 export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
@@ -309,8 +338,8 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
         path: "tender",
         populate: {
           path: "createdBy",
-          select: "name email"
-        }
+          select: "name email",
+        },
       })
       .sort({ createdAt: -1 });
 
@@ -346,22 +375,19 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
           materials: q.tender?.materials || [],
           totalWeight: q.tender?.totalWeight,
           totalQuantity: q.tender?.totalQuantity,
-          createdBy: q.tender?.createdBy || null // ✅ now includes name, email, and _id
-        }
+          createdBy: q.tender?.createdBy || null, // ✅ now includes name, email, and _id
+        },
       };
     });
 
     res.status(200).json({ success: true, data: formatted });
-
   } catch (error) {
     console.error("Error fetching quotation history:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//all finalized tenders 
-
-
+//all finalized tenders
 
 export const getAllFinalizedTendersWithQuotations = async (req, res) => {
   try {
@@ -446,7 +472,6 @@ export const getAllFinalizedTendersWithQuotations = async (req, res) => {
     }
 
     res.status(200).json({ success: true, data: results });
-
   } catch (error) {
     console.error("Error fetching finalized tenders for RR user:", error);
     res.status(500).json({ success: false, message: error.message });
