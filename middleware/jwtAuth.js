@@ -2,7 +2,6 @@ import JWT from "jsonwebtoken";
 
 export const jwtAuth = (req, res, next) => {
   const token = (req.cookies && req.cookies.token) || null;
-  console.log(token);
   
   if (!token) {
     return res.status(401).json({ success: false, message: "NOT authorized" });
