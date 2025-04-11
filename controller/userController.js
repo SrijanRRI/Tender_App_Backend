@@ -325,36 +325,23 @@ export const resetPassword = async (req, res, next) => {
     }
   };
 
-  export const getUserById = async (req, res) => {
-    const { id } = req.params;
-  
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required",
-      });
-    }
-  
+  export const getAllUsers = async (req, res) => {
     try {
-      const user = await userModel.findById(id).select("-password"); // exclude password
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
+      const users = await userModel.find({isApproved : "true"}).select("-password"); // Exclude passwords
   
       return res.status(200).json({
         success: true,
-        data: user,
+        count: users.length,
+        data: users,
       });
     } catch (error) {
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
-        message: "Invalid ID or database error: " + error.message,
+        message: "Failed to retrieve users: " + error.message,
       });
     }
   };
+  
   
 
   //get current user

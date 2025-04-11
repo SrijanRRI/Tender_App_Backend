@@ -1,4 +1,5 @@
 import userModel from "../models/userSchema.js";
+import Tender from "../models/tenderSchema.js";
 import nodemailer from "nodemailer";
 
 // Get all users pending approval
@@ -235,5 +236,18 @@ export const getApprovedTransportUsers = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+
+export const getAllTenders = async (req, res) => {
+  try {
+    const tenders = await Tender.find()
+      .sort({ createdAt: -1 })
+      .populate("selectedQuotation");
+
+    res.status(200).json({ success: true, data: tenders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

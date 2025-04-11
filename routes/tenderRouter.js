@@ -40,4 +40,5 @@ router.get("/quotation/history", jwtAuth, getQuotationHistoryForTransporter);
 
 router.get("/my-finalized-tenders", jwtAuth, getAllFinalizedTendersWithQuotations);
 
+ 
 export default router;
