@@ -60,6 +60,10 @@ const tenderSchema = new mongoose.Schema(
         return this.status === "finalized" || this.status === "closed";
       },
     },
+    projectName: { type: String, required: true },
+    projectCode: { type: String, required: true },
+    purchaseOrder: { type: String, required: true, trim: true },
+    projectRemark: { type: String, default: "", trim: true },
   },
   { timestamps: true }
 );
