@@ -3,7 +3,8 @@ import {
   getPendingApprovals, 
   approveUser, 
   rejectUser,
-  getApprovedTransportUsers
+  getApprovedTransportUsers,
+  getAllTenders
 } from '../controller/adminController.js'
 
 const adminRouter = express.Router();
@@ -15,5 +16,10 @@ adminRouter.get('/pending-approvals', getPendingApprovals);
 adminRouter.put('/approve-user/:userId', approveUser);
 adminRouter.delete('/reject-user/:userId', rejectUser);
 adminRouter.get('/transport-users', getApprovedTransportUsers);
+adminRouter.get('/all-tender', getAllTenders);
+
+
+
+
 
 export default adminRouter;
