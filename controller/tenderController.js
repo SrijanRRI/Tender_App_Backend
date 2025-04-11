@@ -19,7 +19,7 @@ export const createTender = async (req, res) => {
       totalQuantity,
     } = req.body;
 
-    console.log("Tender creation payload:", req.body);
+    
 
     // ✅ Validate delivery window
     if (
