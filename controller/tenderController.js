@@ -23,8 +23,7 @@ export const createTender = async (req, res) => {
       projectRemark,
     } = req.body;
 
-    // ✅ Validate required project fields
-    if (!projectName || !projectCode) {
+    if (!projectName || !projectCode || !purchaseOrder) {
       return res.status(400).json({
         success: false,
         message: "Project name and code are required",
@@ -54,15 +53,18 @@ export const createTender = async (req, res) => {
     }
 
     // ✅ Normalize material fields
-    const normalizedMaterials = materials.map((item) => ({
-      material: item.material,
-      subMaterial: item.subMaterial || "",
-      weight: item.weight,
-      quantity: item.quantity,
-    }));
+    const normalizedMaterials = materials.map((item) => {
+      return {
+        material: item.material,
+        subMaterial: item.subMaterial || "",
+        weight: item.weight,
+        quantity: item.quantity,
+      };
+    });
 
     // ✅ Create Tender
     const tender = new Tender({
+      ...req.body,
       createdBy: req.user.id,
       materials: normalizedMaterials,
       totalWeight,
@@ -78,7 +80,9 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark: projectRemark || "",
+
     });
+    console.log(tender);
 
     await tender.save();
 
@@ -94,17 +98,6 @@ export const createTender = async (req, res) => {
 
     const htmlBody = `
       <h2>New Tender Assigned</h2>
-      <p><strong>Project:</strong> ${tender.projectName} (${tender.projectCode})</p>
-      ${
-        tender.purchaseOrder
-          ? `<p><strong>Purchase Order:</strong> ${tender.purchaseOrder}</p>`
-          : ""
-      }
-      ${
-        tender.projectRemark
-          ? `<p><strong>Project Remark:</strong> ${tender.projectRemark}</p>`
-          : ""
-      }
       <p><strong>Dispatch Location:</strong> ${tender.dispatchLocation}</p>
       <p><strong>Address:</strong> ${tender.address}</p>
       <p><strong>Delivery Window:</strong> ${new Date(
@@ -116,34 +109,36 @@ export const createTender = async (req, res) => {
         tender.closeDate
       ).toLocaleDateString()}</p>
       <h4>Materials</h4>
-      <ul>
-        ${tender.materials
-          .map((mat) => {
-            let line = `${mat.material}`;
-            if (mat.subMaterial) line += ` (${mat.subMaterial})`;
+     <ul>
+  ${tender.materials
+    .map((mat) => {
+      let line = `${mat.material}`; // always include material
 
-            const weightDisplay =
-              mat.weight && !isNaN(mat.weight) ? `${mat.weight}kg` : "";
-            const qtyDisplay =
-              mat.quantity && !isNaN(mat.quantity)
-                ? `× ${mat.quantity} pcs`
-                : "";
+      if (mat.subMaterial) {
+        line += ` (${mat.subMaterial})`;
+      }
 
-            const detailLine = [weightDisplay, qtyDisplay]
-              .filter(Boolean)
-              .join(" ");
-            if (detailLine) line += ` - ${detailLine}`;
+      const weightDisplay =
+        mat.weight && !isNaN(mat.weight) ? `${mat.weight}kg` : "";
+      const qtyDisplay =
+        mat.quantity && !isNaN(mat.quantity) ? `× ${mat.quantity} pcs` : "";
 
-            return `<li>${line}</li>`;
-          })
-          .join("")}
-      </ul>
+      const detailLine = [weightDisplay, qtyDisplay].filter(Boolean).join(" ");
+
+      if (detailLine) {
+        line += ` - ${detailLine}`;
+      }
+
+      return `<li>${line}</li>`;
+    })
+    .join("")}
+</ul>
       <p><strong>Remarks:</strong> ${tender.remarks || "None"}</p>
       <br/>
       <p>📝 Please log in to the Transporter Dashboard to submit your quotation.</p>
     `;
 
-    // ✅ Send emails to transporters
+    // ✅ Send emails
     for (const email of transporterEmails) {
       try {
         await sendMail({
