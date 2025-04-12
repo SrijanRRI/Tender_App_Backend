@@ -240,14 +240,75 @@ export const getApprovedTransportUsers = async (req, res) => {
 };
 
 
+
 export const getAllTenders = async (req, res) => {
   try {
+    // Step 1: Get all tenders with selectedQuotation and creator info
     const tenders = await Tender.find()
       .sort({ createdAt: -1 })
-      .populate("selectedQuotation");
+      .populate({
+        path: "selectedQuotation",
+        populate: {
+          path: "transportUser",
+          select: "name email"
+        }
+      })
+      .populate("createdBy", "name email");
 
-    res.status(200).json({ success: true, data: tenders });
+    // Step 2: Fetch all quotations for all tenders
+    const tenderIds = tenders.map(t => t._id);
+    const allQuotations = await Quotation.find({ tender: { $in: tenderIds } })
+      .populate("transportUser", "name email")
+      .sort({ createdAt: -1 });
+
+    // Group quotations by tender ID
+    const quotationsByTender = {};
+    for (const q of allQuotations) {
+      const signedFiles = (q.files || []).map((file) => {
+        const key = file.url?.split("/").pop();
+        return {
+          ...file,
+          url: generateSignedUrl(key),
+        };
+      });
+
+      const formattedQuotation = {
+        _id: q._id,
+        price: q.price,
+        vehicleNumber: q.vehicleNumber,
+        createdAt: q.createdAt,
+        transportUser: q.transportUser,
+        files: signedFiles
+      };
+
+      const tid = q.tender.toString();
+      if (!quotationsByTender[tid]) quotationsByTender[tid] = [];
+      quotationsByTender[tid].push(formattedQuotation);
+    }
+
+    // Step 3: Attach quotations to each tender
+    const results = tenders.map(tender => {
+      const tenderObj = tender.toObject();
+      tenderObj.quotations = quotationsByTender[tender._id.toString()] || [];
+
+      // Add signed files to selectedQuotation too
+      if (tenderObj.selectedQuotation && tenderObj.selectedQuotation.files) {
+        tenderObj.selectedQuotation.files = tenderObj.selectedQuotation.files.map(file => {
+          const key = file.url?.split("/").pop();
+          return {
+            ...file,
+            url: generateSignedUrl(key),
+          };
+        });
+      }
+
+      return tenderObj;
+    });
+
+    res.status(200).json({ success: true, data: results });
+
   } catch (error) {
+    console.error("Error fetching tenders:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
