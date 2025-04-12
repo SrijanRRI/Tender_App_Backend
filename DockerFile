@@ -38,10 +38,10 @@ CMD ["node", "index.js"]
 
 
 
-# docker build  --no-cache -t 192.168.13.72:5000/rr_logiyatra_fe .      
-# docker run -d --name rr_logiyatra_fe -p 80:80 rr_logiyatra_fe_image
+# docker build  --no-cache -t 192.168.13.72:5000/rr_logiyatra_be .      
+# docker run -d --name rr_logiyatra_be -p 8000:8000 rr_logiyatra_be_image
 
-# docker tag rr_logiyatra_fe_image 192.168.13.72:5000/rr_logiyatra_fe
-# docker push 192.168.13.72:5000/rr_logiyatra_fe
-# docker pull 192.168.13.72:5000/rr_logiyatra_fe
-# docker run -d --name rr_logiyatra_fe -p 8000:8000 192.168.13.72:5000/rr_logiyatra_fe
+# docker tag rr_logiyatra_be_image 192.168.13.72:5000/rr_logiyatra_be
+# docker push 192.168.13.72:5000/rr_logiyatra_be
+# docker pull 192.168.13.72:5000/rr_logiyatra_be
+# docker run -d --name rr_logiyatra_be -p 8000:8000 192.168.13.72:5000/rr_logiyatra_be
