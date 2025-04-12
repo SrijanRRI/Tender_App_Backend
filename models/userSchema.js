@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: function() {
             // Automatically approve regular users, but require approval for transportUsers
-            return this.role !== 'transportUser';
+            return this.role === 'admin';
         }
     },
     forgotPasswordToken: {
