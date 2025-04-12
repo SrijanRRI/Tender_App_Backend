@@ -1,6 +1,8 @@
 import userModel from "../models/userSchema.js";
 import Tender from "../models/tenderSchema.js";
 import nodemailer from "nodemailer";
+import Quotation from "../models/quotationSchema.js";
+
 
 // Get all users pending approval
 export const getPendingApprovals = async (req, res) => {
