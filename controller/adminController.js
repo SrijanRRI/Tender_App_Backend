@@ -9,7 +9,7 @@ export const getPendingApprovals = async (req, res) => {
   try {
     const pendingUsers = await userModel
       .find({
-        role: "transportUser",
+        role: { $in: ["user", "transportUser"] },
         isApproved: false,
       })
       .select("-password");

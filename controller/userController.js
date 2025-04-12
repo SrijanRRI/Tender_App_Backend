@@ -26,7 +26,7 @@ export const login = async (req, res) => {
     }
 
     // For transportUsers, check if they're approved
-    if (user.role === 'transportUser' && !user.isApproved) {
+    if ((user.role === 'transportUser' || user.role === 'user') && !user.isApproved) {
       return res.status(403).json({
         success: false,
         message: "Your account is pending admin approval"
@@ -125,7 +125,7 @@ export const login = async (req, res) => {
       
       // Prepare response with appropriate message for transportUsers
       let message = "Account created successfully";
-      if (role === 'transportUser') {
+      if (role === 'transportUser' ||  role === 'user') {
         message = "Account created successfully. Please wait for admin approval before you can login.";
       }
       
