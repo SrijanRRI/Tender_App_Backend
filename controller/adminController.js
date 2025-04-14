@@ -48,12 +48,12 @@ export const approveUser = async (req, res) => {
       });
     }
 
-    if (user.role !== "transportUser") {
-      return res.status(400).json({
-        success: false,
-        message: "Only transport users require approval",
-      });
-    }
+    // if (user.role !== "transportUser") {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Only transport users require approval",
+    //   });
+    // }
 
     if (user.isApproved) {
       return res.status(400).json({
