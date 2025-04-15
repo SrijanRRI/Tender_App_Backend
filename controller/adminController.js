@@ -150,7 +150,7 @@ export const rejectUser = async (req, res) => {
       });
     }
 
-    if (user.role !== "transportUser" || user.isApproved) {
+    if (user.isApproved) {
       return res.status(400).json({
         success: false,
         message: "Invalid operation",
