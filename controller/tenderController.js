@@ -4,6 +4,7 @@ import { generateSignedUrl } from "../utils/minioClient.js";
 import mongoose from "mongoose";
 import User from "../models/userSchema.js"; // Replace with your actual user model path
 import { sendMail } from "../utils/sendMail.js"; // You must have this utility created
+import userModel from "../models/userSchema.js";
 
 //Create Tender
 
@@ -166,12 +167,9 @@ export const finalizeTender = async (req, res) => {
 
     const tender = await Tender.findById(req.params.id);
     if (!tender) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Tender not found" });
+      return res.status(404).json({ success: false, message: "Tender not found" });
     }
 
-    // ✅ Prevent re-finalization
     if (tender.status === "finalized" || tender.selectedQuotation) {
       return res.status(400).json({
         success: false,
@@ -189,25 +187,47 @@ export const finalizeTender = async (req, res) => {
     });
 
     if (!quotation) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid quotation" });
+      return res.status(400).json({ success: false, message: "Invalid quotation" });
+    }
+
+    const transportUser = await userModel.findById(quotation.transportUser);
+    if (!transportUser) {
+      return res.status(400).json({ success: false, message: "Transport user not found" });
     }
 
     tender.selectedQuotation = quotation._id;
     tender.finalPrice = finalPrice;
     tender.status = "finalized";
-
     await tender.save();
 
-    res
-      .status(200)
-      .json({ success: true, message: "Tender finalized", tender });
+    // ✅ Send email to finalized transport user
+    try {
+      await sendMail({
+        to: transportUser.email,
+        subject: '🎉 Your Quotation Has Been Selected!',
+        html: `
+          <p>Hello <strong>${transportUser.name}</strong>,</p>
+          <p>Great news! Your quotation for the tender <strong>#${tender._id}</strong> has been accepted.</p>
+          <p><strong>Final Price:</strong> ₹${finalPrice}</p>
+          <p>We appreciate your support. Further details will be communicated soon.</p>
+          <br/>
+          <p>Regards,<br/>RR ISPAT Team</p>
+        `
+      });
+    } catch (emailErr) {
+      console.error('Failed to send finalization email:', emailErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Tender finalized and email sent to transport user",
+      tender
+    });
+
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-
 
 
 // ✅ 3. Get All Tenders Created by RR User
