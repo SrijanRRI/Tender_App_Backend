@@ -5,10 +5,10 @@ import { s3, BUCKET_NAME } from "../utils/minioClient.js";
 export const submitQuotation = async (req, res) => {
   try {
     const { price, vehicleNumber } = req.body;
-    const userId = req.user.id; // from jwtAuth middleware
+    const userId = req.user.id;
     const tenderId = req.params.id;
 
-    // 1. Validate tender existence and status
+    // 1. Validate Tender
     const tender = await Tender.findById(tenderId);
     if (!tender || tender.status !== "open") {
       return res.status(400).json({
@@ -17,25 +17,33 @@ export const submitQuotation = async (req, res) => {
       });
     }
 
-    // 2. Check if quotation already submitted by this user
-    const existing = await Quotation.findOne({
-      tender: tender._id,
-      transportUser: userId,
-    });
-    if (existing) {
-      return res.status(400).json({
+    const now = new Date();
+    if (now < tender.biddingStart || now > tender.biddingEnd) {
+      return res.status(403).json({
         success: false,
-        message: "You have already submitted a quotation",
+        message: "Bidding window is closed",
       });
     }
 
-    // 3. Handle file upload to MinIO
+    // 2. Count previous quotations (3-bid limit)
+    const bidCount = await Quotation.countDocuments({
+      tender: tenderId,
+      transportUser: userId,
+    });
+
+    if (bidCount >= 3) {
+      return res.status(403).json({
+        success: false,
+        message: "You have reached the maximum of 3 bids for this tender",
+      });
+    }
+
+    // 3. Upload file (if provided)
     let uploadedFiles = [];
-    console.log("hello");
-    
+
     if (req.file) {
       const file = req.file;
-      const filename = Date.now() + '-' + file.originalname;
+      const filename = Date.now() + "-" + file.originalname;
 
       const params = {
         Bucket: BUCKET_NAME,
@@ -54,7 +62,7 @@ export const submitQuotation = async (req, res) => {
       });
     }
 
-    // 4. Create and save quotation
+    // 4. Save Quotation
     const quotation = new Quotation({
       tender: tender._id,
       transportUser: userId,
@@ -69,13 +77,11 @@ export const submitQuotation = async (req, res) => {
     tender.quotations.push(quotation._id);
     await tender.save();
 
-    // 6. Respond
     res.status(201).json({
       success: true,
-      message: "Quotation submitted successfully",
+      message: `Quotation ${bidCount + 1}/3 submitted successfully.`,
       data: quotation,
     });
-
   } catch (error) {
     console.error("Quotation submission error:", error);
     res.status(500).json({
