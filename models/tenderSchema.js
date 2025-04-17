@@ -8,13 +8,18 @@ const tenderSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ✅ Replacing single date with delivery window (range)
     deliveryWindow: {
       from: { type: Date, required: true },
       to: { type: Date, required: true },
     },
 
+    // 🆕 Close date remains for tagging/reporting
     closeDate: { type: Date, required: true },
+
+    // 🆕 Bidding period support
+    biddingStart: { type: Date, required: true },
+    biddingEnd: { type: Date, required: true },
+
     dispatchLocation: { type: String, required: true },
     address: { type: String, required: true },
     pincode: { type: String, required: true },
@@ -47,7 +52,12 @@ const tenderSchema = new mongoose.Schema(
       },
     ],
 
-    quotations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Quotation" }],
+    quotations: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Quotation",
+      },
+    ],
 
     selectedQuotation: {
       type: mongoose.Schema.Types.ObjectId,
@@ -60,6 +70,21 @@ const tenderSchema = new mongoose.Schema(
         return this.status === "finalized" || this.status === "closed";
       },
     },
+
+    // 🆕 Final winner (auto or manually selected)
+    finalTransporter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      default: null,
+    },
+
+    // 🆕 Reason for selection or reopen
+    winnerComment: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     projectName: { type: String, required: true },
     projectCode: { type: String, required: true },
     purchaseOrder: { type: String, required: true, trim: true },
