@@ -587,35 +587,41 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
 
 export const getMyQuotationPosition = async (req, res) => {
   try {
-    const { tenderId } = req.query;
+    const { tenderId } = req.params;
     const userId = req.user.id;
 
-    if (!tenderId) {
-      return res.status(400).json({ message: "Tender ID is required" });
+    console.log("Fetching position for tenderId:", tenderId);
+
+    // ✅ Validate Tender ID
+    if (!tenderId || !mongoose.Types.ObjectId.isValid(tenderId)) {
+      return res.status(400).json({ message: "Invalid or missing Tender ID" });
     }
 
-    // Get all quotations for the tender
-    const allQuotes = await Quotation.find({ tender: tenderId }).sort({ price: 1, createdAt: 1 });
+    // ✅ Get all quotations for the tender, sorted by price + createdAt
+    const allQuotes = await Quotation.find({ tender: tenderId }).sort({
+      price: 1,
+      createdAt: 1,
+    });
 
-    // Group best quote per transporter
-    const bestQuotesMap = new Map(); // transportUserId => best quotation
+    // ✅ Group best (lowest) quote per transporter
+    const bestQuotesMap = new Map(); // transportUserId => bestQuotation
 
     for (const quote of allQuotes) {
       const uid = quote.transportUser.toString();
       if (!bestQuotesMap.has(uid)) {
-        bestQuotesMap.set(uid, quote); // this is the best one due to sort order
+        bestQuotesMap.set(uid, quote); // first lowest quote per transporter
       }
     }
 
-    // Build rank list
-    const sortedBestQuotes = Array.from(bestQuotesMap.entries())
-      .sort(([, q1], [, q2]) => {
-        if (q1.price === q2.price) {
-          return new Date(q1.createdAt) - new Date(q2.createdAt);
-        }
-        return q1.price - q2.price;
-      });
+    // ✅ Sort those best quotes by price (and createdAt to break ties)
+    const sortedBestQuotes = Array.from(bestQuotesMap.entries()).sort(([, q1], [, q2]) => {
+      if (q1.price === q2.price) {
+        return new Date(q1.createdAt) - new Date(q2.createdAt);
+      }
+      return q1.price - q2.price;
+    });
 
+    // ✅ Find current user's rank + their best quote
     let position = null;
     let bestQuote = null;
 
@@ -633,6 +639,7 @@ export const getMyQuotationPosition = async (req, res) => {
       }
     }
 
+    // ✅ No bids yet?
     if (!bestQuote) {
       return res.status(200).json({
         position: null,
@@ -640,12 +647,15 @@ export const getMyQuotationPosition = async (req, res) => {
       });
     }
 
+    // ✅ Success response with rank + best bid
     res.status(200).json({
       position,
       bestQuotation: bestQuote,
     });
+
   } catch (error) {
     console.error("Error getting bid position:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
