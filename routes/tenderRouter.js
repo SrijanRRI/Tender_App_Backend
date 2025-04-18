@@ -7,6 +7,8 @@ import {
   getTenderQuotations,
   finalizeTender,
   deleteTender,
+  getMyQuotationPosition,
+  getUpcomingTendersForTransporter,
   // getQuotationHistoryForTransporter,
   // getAllFinalizedTendersWithQuotations
 } from "../controller/tenderController.js";
@@ -40,5 +42,8 @@ router.delete("/:id", jwtAuth, deleteTender);
 
 // router.get("/my-finalized-tenders", jwtAuth, getAllFinalizedTendersWithQuotations);
 
- 
+router.get("/my-position", jwtAuth, getMyQuotationPosition);
+
+router.get("/transporter/upcoming", jwtAuth, getUpcomingTendersForTransporter);
+
 export default router;

@@ -262,6 +262,35 @@ export const getTendersForTransporter = async (req, res) => {
   }
 };
 
+//upcomming tender 
+
+export const getUpcomingTendersForTransporter = async (req, res) => {
+  try {
+    const transporterId = req.user.id;
+    const now = new Date();
+
+    // 🟡 Step 1: Find upcoming tenders assigned to this transporter
+    const upcomingTenders = await Tender.find({
+      transporters: transporterId,
+      status: "open",
+      biddingStart: { $gt: now }
+    })
+      .sort({ biddingStart: 1 })
+      .populate("createdBy", "name email");
+
+    // 🕒 Step 2: Add biddingOpensIn to each tender
+    const tendersWithCountdown = upcomingTenders.map((tender) => {
+      const tenderObj = tender.toObject();
+      tenderObj.biddingOpensIn = new Date(tender.biddingStart).getTime() - now.getTime(); // in milliseconds
+      return tenderObj;
+    });
+
+    res.status(200).json({ success: true, data: tendersWithCountdown });
+  } catch (error) {
+    console.error("Error in getUpcomingTendersForTransporter:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // ✅ 5. Get Quotations for a Tender
 
