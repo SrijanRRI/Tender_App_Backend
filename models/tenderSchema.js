@@ -94,3 +94,6 @@ const tenderSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("Tender", tenderSchema);
+
+
+
