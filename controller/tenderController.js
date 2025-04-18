@@ -594,26 +594,56 @@ export const getMyQuotationPosition = async (req, res) => {
       return res.status(400).json({ message: "Tender ID is required" });
     }
 
+    // Get all quotations for the tender
     const allQuotes = await Quotation.find({ tender: tenderId }).sort({ price: 1, createdAt: 1 });
 
-    // Prepare position list: only 1st bid per unique transporter
-    const seen = new Set();
-    const positionList = [];
+    // Group best quote per transporter
+    const bestQuotesMap = new Map(); // transportUserId => best quotation
 
-    for (let quote of allQuotes) {
+    for (const quote of allQuotes) {
       const uid = quote.transportUser.toString();
-      if (!seen.has(uid)) {
-        seen.add(uid);
-        positionList.push(uid);
+      if (!bestQuotesMap.has(uid)) {
+        bestQuotesMap.set(uid, quote); // this is the best one due to sort order
       }
     }
 
-    const index = positionList.indexOf(userId);
-    if (index === -1) {
-      return res.status(200).json({ position: null, message: "You have not submitted any bids yet." });
+    // Build rank list
+    const sortedBestQuotes = Array.from(bestQuotesMap.entries())
+      .sort(([, q1], [, q2]) => {
+        if (q1.price === q2.price) {
+          return new Date(q1.createdAt) - new Date(q2.createdAt);
+        }
+        return q1.price - q2.price;
+      });
+
+    let position = null;
+    let bestQuote = null;
+
+    for (let i = 0; i < sortedBestQuotes.length; i++) {
+      const [uid, quote] = sortedBestQuotes[i];
+      if (uid === userId) {
+        position = `L${i + 1}`;
+        bestQuote = {
+          _id: quote._id,
+          price: quote.price,
+          vehicleNumber: quote.vehicleNumber,
+          createdAt: quote.createdAt,
+        };
+        break;
+      }
     }
 
-    res.status(200).json({ position: `L${index + 1}` });
+    if (!bestQuote) {
+      return res.status(200).json({
+        position: null,
+        message: "You have not submitted any bids yet.",
+      });
+    }
+
+    res.status(200).json({
+      position,
+      bestQuotation: bestQuote,
+    });
   } catch (error) {
     console.error("Error getting bid position:", error);
     res.status(500).json({ message: "Internal server error" });

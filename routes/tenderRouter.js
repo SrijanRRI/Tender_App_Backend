@@ -46,4 +46,6 @@ router.get("/my-position", jwtAuth, getMyQuotationPosition);
 
 router.get("/transporter/upcoming", jwtAuth, getUpcomingTendersForTransporter);
 
+
+
 export default router;

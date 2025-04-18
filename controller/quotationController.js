@@ -1,6 +1,7 @@
 import Quotation from "../models/quotationSchema.js";
 import Tender from "../models/tenderSchema.js";
 import { s3, BUCKET_NAME } from "../utils/minioClient.js";
+import { generateSignedUrl } from "../utils/minioClient.js";
 
 export const submitQuotation = async (req, res) => {
   try {
@@ -90,3 +91,48 @@ export const submitQuotation = async (req, res) => {
     });
   }
 };
+
+//get all quotations for a tender
+
+export const getMyQuotationsForTender = async (req, res) => {
+  try {
+    const tenderId = req.params.tenderId;
+    const transportUserId = req.user.id;
+
+    if (!tenderId) {
+      return res.status(400).json({ success: false, message: "Tender ID is required" });
+    }
+
+    // Get all quotations submitted by this transporter for this tender
+    const myQuotes = await Quotation.find({
+      tender: tenderId,
+      transportUser: transportUserId,
+    }).sort({ createdAt: 1 });
+
+    // Attach signed file URLs
+    const formatted = myQuotes.map((q) => {
+      const signedFiles = (q.files || []).map((file) => {
+        const key = file.url?.split("/").pop();
+        return {
+          ...file,
+          url: generateSignedUrl(key),
+        };
+      });
+
+      return {
+        _id: q._id,
+        price: q.price,
+        vehicleNumber: q.vehicleNumber,
+        createdAt: q.createdAt,
+        files: signedFiles,
+      };
+    });
+
+    res.status(200).json({ success: true, quotations: formatted });
+  } catch (error) {
+    console.error("Error fetching transporter quotations:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
