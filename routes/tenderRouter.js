@@ -42,7 +42,7 @@ router.delete("/:id", jwtAuth, deleteTender);
 
 // router.get("/my-finalized-tenders", jwtAuth, getAllFinalizedTendersWithQuotations);
 
-router.get("/my-position", jwtAuth, getMyQuotationPosition);
+router.get("/my-position/:tenderId", jwtAuth, getMyQuotationPosition);
 
 router.get("/transporter/upcoming", jwtAuth, getUpcomingTendersForTransporter);
 
