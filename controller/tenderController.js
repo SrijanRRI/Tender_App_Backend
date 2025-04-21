@@ -294,74 +294,65 @@ export const getUpcomingTendersForTransporter = async (req, res) => {
 
 // ✅ 5. Get Quotations for a Tender
 
+
 export const getTenderQuotations = async (req, res) => {
   try {
     const tenderId = req.params.id;
     const userId = req.user.id;
 
     const tender = await Tender.findById(tenderId).populate("createdBy", "name email");
-    if (!tender) return res.status(404).json({ success: false, message: "Tender not found" });
-    if (tender.createdBy._id.toString() !== userId)
-      return res.status(403).json({ success: false, message: "Unauthorized" });
+    if (!tender) {
+      return res.status(404).json({ success: false, message: "Tender not found" });
+    }
 
-    const allQuotations = await Quotation.find({ tender: tenderId })
+    // 🔐 Check if RR user is the creator
+    if (tender.createdBy._id.toString() !== userId) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    // ✅ Get all quotations, sorted by price + createdAt
+    const allQuotes = await Quotation.find({ tender: tenderId })
       .populate("transportUser", "name email")
       .sort({ price: 1, createdAt: 1 });
 
-    // Step 1: Compute first (best) quote per transporter for ranking
-    const bestQuotesMap = new Map(); // key: transportUserId => { quote, index }
+    // ✅ Only consider the best (lowest) quote per transporter
+    const seen = new Set();
+    const bestQuotes = [];
 
-    for (let i = 0; i < allQuotations.length; i++) {
-      const q = allQuotations[i];
+    for (const q of allQuotes) {
       const uid = q.transportUser._id.toString();
-      if (!bestQuotesMap.has(uid)) {
-        bestQuotesMap.set(uid, { quote: q, index: i });
+      if (!seen.has(uid)) {
+        seen.add(uid);
+        bestQuotes.push(q);
       }
+      if (bestQuotes.length >= 3) break; // stop once we have top 3
     }
 
-    // Step 2: Assign ranks based on best quote positions
-    const rankMap = {};
-    Array.from(bestQuotesMap.entries())
-      .sort((a, b) => a[1].index - b[1].index)
-      .forEach(([uid], idx) => {
-        rankMap[uid] = `L${idx + 1}`;
-      });
-
-    // Step 3: Group all quotes by transporter
-    const grouped = {};
-    for (const q of allQuotations) {
-      const uid = q.transportUser._id.toString();
+    // ✅ Add rank + file URLs
+    const ranked = bestQuotes.map((q, index) => {
       const signedFiles = (q.files || []).map((file) => {
         const key = file.url?.split("/").pop();
         return { ...file, url: generateSignedUrl(key) };
       });
 
-      if (!grouped[uid]) {
-        grouped[uid] = {
-          transportUser: q.transportUser,
-          bidCount: 0,
-          rank: rankMap[uid],
-          finalPrice: bestQuotesMap.get(uid).quote.price,
-          allBids: [],
-        };
-      }
-
-      grouped[uid].bidCount += 1;
-      grouped[uid].allBids.push({
-        _id: q._id,
+      return {
+        rank: `L${index + 1}`,
+        transportUser: q.transportUser,
         price: q.price,
         vehicleNumber: q.vehicleNumber,
         createdAt: q.createdAt,
         files: signedFiles,
-      });
-    }
+        _id: q._id,
+      };
+    });
 
-    res.status(200).json({ success: true, data: Object.values(grouped) });
+    res.status(200).json({ success: true, data: ranked });
   } catch (error) {
-    console.error("Error in getTenderQuotations:", error);
+    console.error("Error fetching top 3 quotations:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 
 //reopen tender
