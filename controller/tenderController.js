@@ -295,6 +295,8 @@ export const getUpcomingTendersForTransporter = async (req, res) => {
 // ✅ 5. Get Quotations for a Tender
 
 
+
+
 export const getTenderQuotations = async (req, res) => {
   try {
     const tenderId = req.params.id;
@@ -305,17 +307,22 @@ export const getTenderQuotations = async (req, res) => {
       return res.status(404).json({ success: false, message: "Tender not found" });
     }
 
-    // 🔐 Check if RR user is the creator
     if (tender.createdBy._id.toString() !== userId) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    // ✅ Get all quotations, sorted by price + createdAt
+    const now = new Date();
+    if (now < tender.biddingEnd) {
+      return res.status(403).json({
+        success: false,
+        message: "Top quotations can be viewed only after the bidding window closes."
+      });
+    }
+
     const allQuotes = await Quotation.find({ tender: tenderId })
       .populate("transportUser", "name email")
       .sort({ price: 1, createdAt: 1 });
 
-    // ✅ Only consider the best (lowest) quote per transporter
     const seen = new Set();
     const bestQuotes = [];
 
@@ -325,10 +332,9 @@ export const getTenderQuotations = async (req, res) => {
         seen.add(uid);
         bestQuotes.push(q);
       }
-      if (bestQuotes.length >= 3) break; // stop once we have top 3
+      if (bestQuotes.length >= 3) break;
     }
 
-    // ✅ Add rank + file URLs
     const ranked = bestQuotes.map((q, index) => {
       const signedFiles = (q.files || []).map((file) => {
         const key = file.url?.split("/").pop();
