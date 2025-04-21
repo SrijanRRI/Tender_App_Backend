@@ -6,7 +6,6 @@ import User from "../models/userSchema.js"; // Replace with your actual user mod
 import { sendMail } from "../utils/sendMail.js"; // You must have this utility created
 import userModel from "../models/userSchema.js";
 
-
 // ✅ Create Tender with bidding window + delivery window
 export const createTender = async (req, res) => {
   try {
@@ -26,7 +25,7 @@ export const createTender = async (req, res) => {
       projectName,
       projectCode,
       purchaseOrder,
-      projectRemark
+      projectRemark,
     } = req.body;
 
     // 🔐 Basic validations
@@ -85,14 +84,14 @@ export const createTender = async (req, res) => {
       projectName,
       projectCode,
       purchaseOrder,
-      projectRemark: projectRemark || ""
+      projectRemark: projectRemark || "",
     });
 
     await tender.save();
 
     // 📨 Notify transporters
     const transporterUsers = await User.find({
-      _id: { $in: transporters.map(id => new mongoose.Types.ObjectId(id)) },
+      _id: { $in: transporters.map((id) => new mongoose.Types.ObjectId(id)) },
     });
 
     const transporterEmails = transporterUsers.map((user) => user.email);
@@ -101,8 +100,14 @@ export const createTender = async (req, res) => {
     const htmlBody = `
       <h3>New Tender Assigned</h3>
       <p><strong>Dispatch Location:</strong> ${dispatchLocation}</p>
-      <p><strong>Delivery Window:</strong> ${new Date(deliveryWindow.from).toLocaleDateString()} - ${new Date(deliveryWindow.to).toLocaleDateString()}</p>
-      <p><strong>Bidding Ends:</strong> ${new Date(biddingEnd).toLocaleDateString()}</p>
+      <p><strong>Delivery Window:</strong> ${new Date(
+        deliveryWindow.from
+      ).toLocaleDateString()} - ${new Date(
+      deliveryWindow.to
+    ).toLocaleDateString()}</p>
+      <p><strong>Bidding Ends:</strong> ${new Date(
+        biddingEnd
+      ).toLocaleDateString()}</p>
       <p><strong>Remarks:</strong> ${remarks || "N/A"}</p>
       <p>Login to your Transporter Dashboard to place your bids.</p>
     `;
@@ -118,9 +123,7 @@ export const createTender = async (req, res) => {
   }
 };
 
-
 // ✅ 2. Finalize Tender
-
 
 export const finalizeTender = async (req, res) => {
   try {
@@ -128,7 +131,9 @@ export const finalizeTender = async (req, res) => {
 
     const tender = await Tender.findById(req.params.id);
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     if (tender.status === "finalized" || tender.selectedQuotation) {
@@ -148,12 +153,16 @@ export const finalizeTender = async (req, res) => {
     });
 
     if (!quotation) {
-      return res.status(400).json({ success: false, message: "Invalid quotation" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid quotation" });
     }
 
     const transportUser = await userModel.findById(quotation.transportUser);
     if (!transportUser) {
-      return res.status(400).json({ success: false, message: "Transport user not found" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Transport user not found" });
     }
 
     // ✅ Update tender with all finalization details
@@ -168,7 +177,7 @@ export const finalizeTender = async (req, res) => {
     try {
       await sendMail({
         to: transportUser.email,
-        subject: '🎉 Your Quotation Has Been Selected!',
+        subject: "🎉 Your Quotation Has Been Selected!",
         html: `
           <p>Hello <strong>${transportUser.name}</strong>,</p>
           <p>Great news! Your quotation for the tender <strong>#${tender._id}</strong> has been accepted.</p>
@@ -176,18 +185,17 @@ export const finalizeTender = async (req, res) => {
           <p>We appreciate your support. Further details will be communicated soon.</p>
           <br/>
           <p>Regards,<br/>RR ISPAT Team</p>
-        `
+        `,
       });
     } catch (emailErr) {
-      console.error('Failed to send finalization email:', emailErr.message);
+      console.error("Failed to send finalization email:", emailErr.message);
     }
 
     res.status(200).json({
       success: true,
       message: "Tender finalized and email sent to transport user",
-      tender
+      tender,
     });
-
   } catch (error) {
     console.error("Error in finalizeTender:", error);
     res.status(400).json({ success: false, message: error.message });
@@ -219,22 +227,24 @@ export const getTendersForTransporter = async (req, res) => {
       transporters: transporterId,
       status: "open",
       biddingStart: { $lte: now },
-      biddingEnd: { $gte: now }
+      biddingEnd: { $gte: now },
     }).sort({ createdAt: -1 });
 
-    const tenderIds = tenders.map(t => t._id);
+    const tenderIds = tenders.map((t) => t._id);
 
     // Step 2: Get all quotations by this transporter for these tenders
     const transporterQuotations = await Quotation.find({
       transportUser: transporterId,
-      tender: { $in: tenderIds }
+      tender: { $in: tenderIds },
     }).select("tender");
 
-    const quotedTenderIds = new Set(transporterQuotations.map(q => q.tender.toString()));
+    const quotedTenderIds = new Set(
+      transporterQuotations.map((q) => q.tender.toString())
+    );
 
     // Count how many times transporter quoted per tender
     const bidCountMap = {};
-    transporterQuotations.forEach(q => {
+    transporterQuotations.forEach((q) => {
       const id = q.tender.toString();
       bidCountMap[id] = (bidCountMap[id] || 0) + 1;
     });
@@ -262,7 +272,7 @@ export const getTendersForTransporter = async (req, res) => {
   }
 };
 
-//upcomming tender 
+//upcomming tender
 
 export const getUpcomingTendersForTransporter = async (req, res) => {
   try {
@@ -273,7 +283,7 @@ export const getUpcomingTendersForTransporter = async (req, res) => {
     const upcomingTenders = await Tender.find({
       transporters: transporterId,
       status: "open",
-      biddingStart: { $gt: now }
+      biddingStart: { $gt: now },
     })
       .sort({ biddingStart: 1 })
       .populate("createdBy", "name email");
@@ -281,7 +291,8 @@ export const getUpcomingTendersForTransporter = async (req, res) => {
     // 🕒 Step 2: Add biddingOpensIn to each tender
     const tendersWithCountdown = upcomingTenders.map((tender) => {
       const tenderObj = tender.toObject();
-      tenderObj.biddingOpensIn = new Date(tender.biddingStart).getTime() - now.getTime(); // in milliseconds
+      tenderObj.biddingOpensIn =
+        new Date(tender.biddingStart).getTime() - now.getTime(); // in milliseconds
       return tenderObj;
     });
 
@@ -294,17 +305,19 @@ export const getUpcomingTendersForTransporter = async (req, res) => {
 
 // ✅ 5. Get Quotations for a Tender
 
-
-
-
 export const getTenderQuotations = async (req, res) => {
   try {
     const tenderId = req.params.id;
     const userId = req.user.id;
 
-    const tender = await Tender.findById(tenderId).populate("createdBy", "name email");
+    const tender = await Tender.findById(tenderId).populate(
+      "createdBy",
+      "name email"
+    );
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     if (tender.createdBy._id.toString() !== userId) {
@@ -315,7 +328,8 @@ export const getTenderQuotations = async (req, res) => {
     if (now < tender.biddingEnd) {
       return res.status(403).json({
         success: false,
-        message: "Top quotations can be viewed only after the bidding window closes."
+        message:
+          "Top quotations can be viewed only after the bidding window closes.",
       });
     }
 
@@ -359,24 +373,30 @@ export const getTenderQuotations = async (req, res) => {
   }
 };
 
-
-
 //reopen tender
 export const reopenTender = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
+
+    if (!reason || reason.trim() === "") {
+      return res.status(400).json({ error: "Reason is required." });
+    }
     const tender = await Tender.findById(id);
-    if (!tender) return res.status(404).json({ success: false, message: "Not found" });
+    if (!tender)
+      return res.status(404).json({ success: false, message: "Not found" });
 
     tender.status = "open";
     tender.selectedQuotation = null;
     tender.finalTransporter = null;
     tender.finalPrice = null;
-    tender.winnerComment = (tender.winnerComment || "") + `\n[Reopened: ${reason}]`;
+    tender.winnerComment =
+      (tender.winnerComment || "") + `\n[Reopened: ${reason}]`;
     await tender.save();
 
-    res.status(200).json({ success: true, message: "Tender reopened successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Tender reopened successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -578,9 +598,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
 //   }
 // };
 
-
-//your position for transporters 
-
+//your position for transporters
 
 export const getMyQuotationPosition = async (req, res) => {
   try {
@@ -611,12 +629,14 @@ export const getMyQuotationPosition = async (req, res) => {
     }
 
     // ✅ Sort those best quotes by price (and createdAt to break ties)
-    const sortedBestQuotes = Array.from(bestQuotesMap.entries()).sort(([, q1], [, q2]) => {
-      if (q1.price === q2.price) {
-        return new Date(q1.createdAt) - new Date(q2.createdAt);
+    const sortedBestQuotes = Array.from(bestQuotesMap.entries()).sort(
+      ([, q1], [, q2]) => {
+        if (q1.price === q2.price) {
+          return new Date(q1.createdAt) - new Date(q2.createdAt);
+        }
+        return q1.price - q2.price;
       }
-      return q1.price - q2.price;
-    });
+    );
 
     // ✅ Find current user's rank + their best quote
     let position = null;
@@ -649,10 +669,8 @@ export const getMyQuotationPosition = async (req, res) => {
       position,
       bestQuotation: bestQuote,
     });
-
   } catch (error) {
     console.error("Error getting bid position:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
