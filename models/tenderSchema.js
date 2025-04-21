@@ -83,6 +83,7 @@ const tenderSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+     
     },
 
     projectName: { type: String, required: true },

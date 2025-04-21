@@ -9,6 +9,7 @@ import {
   deleteTender,
   getMyQuotationPosition,
   getUpcomingTendersForTransporter,
+  reopenTender,
   // getQuotationHistoryForTransporter,
   // getAllFinalizedTendersWithQuotations
 } from "../controller/tenderController.js";
@@ -45,6 +46,8 @@ router.delete("/:id", jwtAuth, deleteTender);
 router.get("/my-position/:tenderId", jwtAuth, getMyQuotationPosition);
 
 router.get("/transporter/upcoming", jwtAuth, getUpcomingTendersForTransporter);
+
+router.post("/reopen/:id", jwtAuth, reopenTender);
 
 
 
