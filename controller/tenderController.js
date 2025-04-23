@@ -170,7 +170,7 @@ export const finalizeTender = async (req, res) => {
     tender.finalTransporter = quotation.transportUser;
     tender.finalPrice = finalPrice;
     tender.status = "finalized";
-    tender.winnerComment = `Manually finalized by ${req.user.name}`;
+    // tender.winnerComment = `Manually finalized by ${req.user.name}`;
     await tender.save();
 
     // ✅ Email notification
@@ -410,8 +410,7 @@ export const reopenTender = async (req, res) => {
     tender.finalTransporter = null;
     tender.finalPrice = null;
     tender.reopenCount = (tender.reopenCount || 0) + 1; // ✅ increment counter
-    tender.winnerComment =
-      (tender.winnerComment || "") + `\n[Reopened: ${reason}]`;
+    tender.winnerComment = `[Reopened: ${reason}]`;
 
     await tender.save();
 
