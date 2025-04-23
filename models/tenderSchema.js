@@ -85,6 +85,10 @@ const tenderSchema = new mongoose.Schema(
       trim: true,
      
     },
+    reopenCount: {
+      type: Number,
+      default: 0,
+    },
 
     projectName: { type: String, required: true },
     projectCode: { type: String, required: true },
