@@ -346,17 +346,25 @@ export const getTenderQuotations = async (req, res) => {
         seen.add(uid);
         bestQuotes.push(q);
       }
-      if (bestQuotes.length >= 3) break;
     }
 
-    const ranked = bestQuotes.map((q, index) => {
+    let quotesToReturn = [];
+    if (tender.reopenCount === 0) {
+      quotesToReturn = bestQuotes.slice(0, 3); // L1, L2, L3
+    } else if (tender.reopenCount === 1) {
+      quotesToReturn = bestQuotes.slice(1, 3); // L2, L3
+    } else if (tender.reopenCount === 2) {
+      quotesToReturn = bestQuotes.slice(2, 3); // Only L3
+    }
+
+    const ranked = quotesToReturn.map((q, index) => {
       const signedFiles = (q.files || []).map((file) => {
         const key = file.url?.split("/").pop();
         return { ...file, url: generateSignedUrl(key) };
       });
 
       return {
-        rank: `L${index + 1}`,
+        rank: `L${bestQuotes.indexOf(q) + 1}`,
         transportUser: q.transportUser,
         price: q.price,
         vehicleNumber: q.vehicleNumber,
@@ -373,6 +381,7 @@ export const getTenderQuotations = async (req, res) => {
   }
 };
 
+
 //reopen tender
 export const reopenTender = async (req, res) => {
   try {
@@ -382,33 +391,40 @@ export const reopenTender = async (req, res) => {
     if (!reason || reason.trim() === "") {
       return res.status(400).json({ error: "Reason is required." });
     }
+
     const tender = await Tender.findById(id);
     if (!tender)
       return res.status(404).json({ success: false, message: "Not found" });
 
-     // 🚫 Prevent reopening more than twice
-     if (tender.reopenCount >= 2) {
+    // 🚫 Prevent reopening more than twice
+    if (tender.reopenCount >= 2) {
       return res.status(403).json({
         success: false,
         message: "This tender has already been reopened twice and cannot be reopened again.",
       });
     }
 
+    // ✅ Perform reopen
     tender.status = "open";
     tender.selectedQuotation = null;
     tender.finalTransporter = null;
     tender.finalPrice = null;
+    tender.reopenCount = (tender.reopenCount || 0) + 1; // ✅ increment counter
     tender.winnerComment =
       (tender.winnerComment || "") + `\n[Reopened: ${reason}]`;
+
     await tender.save();
 
-    res
-      .status(200)
-      .json({ success: true, message: "Tender reopened successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Tender reopened successfully",
+      reopenCount: tender.reopenCount
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 // ✅ 6. Get Single Tender
 export const getSingleTender = async (req, res) => {
   try {
