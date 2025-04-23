@@ -463,6 +463,9 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
     const transporterId = new mongoose.Types.ObjectId(req.user.id);
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // normalize to start of today
+
     // ✅ Get all quotations by this transporter, grouped by tender
     const quotations = await Quotation.find({ transportUser: transporterId })
       .populate({
@@ -476,11 +479,11 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
 
     const tenderQuotesMap = new Map();
 
-    // ✅ Group quotations by tender ID (and skip non-closed tenders)
+    // ✅ Group quotations by tender ID (and skip tenders whose closeDate >= today)
     for (const q of quotations) {
       const tender = q.tender;
       const tenderId = tender?._id?.toString();
-      if (!tenderId || tender.status !== "closed") continue;
+      if (!tenderId || new Date(tender.closeDate) >= today) continue;
 
       if (!tenderQuotesMap.has(tenderId)) {
         tenderQuotesMap.set(tenderId, []);
