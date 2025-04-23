@@ -10,7 +10,7 @@ import {
   getMyQuotationPosition,
   getUpcomingTendersForTransporter,
   reopenTender,
-  // getQuotationHistoryForTransporter,
+  getQuotationHistoryForTransporter,
   // getAllFinalizedTendersWithQuotations
 } from "../controller/tenderController.js";
 
@@ -39,7 +39,7 @@ router.put("/finalize/:id", jwtAuth, finalizeTender);
 // ✅ 7. Delete a tender (by RR user)
 router.delete("/:id", jwtAuth, deleteTender);
 
-// router.get("/quotation/history", jwtAuth, getQuotationHistoryForTransporter);
+router.get("/quotation/history", jwtAuth, getQuotationHistoryForTransporter);
 
 // router.get("/my-finalized-tenders", jwtAuth, getAllFinalizedTendersWithQuotations);
 
