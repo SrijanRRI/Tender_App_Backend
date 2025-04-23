@@ -448,11 +448,14 @@ export const deleteTender = async (req, res) => {
 
 // ✅ Get Quotation History for Transporter
 
+
+
+
 export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
     const transporterId = new mongoose.Types.ObjectId(req.user.id);
 
-    // ✅ Get all quotations by this transporter, populate tender + its creator
+    // ✅ Get all quotations by this transporter, grouped by tender
     const quotations = await Quotation.find({ transportUser: transporterId })
       .populate({
         path: "tender",
@@ -461,46 +464,75 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
           select: "name email",
         },
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: 1 });
 
-    const formatted = quotations.map((q) => {
-      const signedFiles = (q.files || []).map((file) => {
-        const key = file.url?.split("/").pop();
+    const tenderQuotesMap = new Map();
+
+    // ✅ Group quotations by tender ID (and skip non-closed tenders)
+    for (const q of quotations) {
+      const tender = q.tender;
+      const tenderId = tender?._id?.toString();
+      if (!tenderId || tender.status !== "closed") continue;
+
+      if (!tenderQuotesMap.has(tenderId)) {
+        tenderQuotesMap.set(tenderId, []);
+      }
+      tenderQuotesMap.get(tenderId).push(q);
+    }
+
+    const result = [];
+
+    for (const [tenderId, tenderQuotes] of tenderQuotesMap.entries()) {
+      const tender = tenderQuotes[0].tender;
+
+      // ✅ Determine if any of the quotations match the selectedQuotation
+      const isSelected = tender.selectedQuotation && tenderQuotes.some(
+        (q) => q._id.toString() === tender.selectedQuotation.toString()
+      );
+
+      const formattedQuotes = tenderQuotes.map((q) => {
+        const signedFiles = (q.files || []).map((file) => {
+          const key = file.url?.split("/").pop();
+          return {
+            ...file,
+            url: generateSignedUrl(key),
+          };
+        });
+
         return {
-          ...file,
-          url: generateSignedUrl(key),
+          _id: q._id,
+          price: q.price,
+          vehicleNumber: q.vehicleNumber,
+          createdAt: q.createdAt,
+          files: signedFiles,
         };
       });
 
-      const isSelected =
-        q.tender?.selectedQuotation?.toString() === q._id.toString();
-
-      return {
-        _id: q._id,
-        tenderId: q.tender?._id,
-        price: q.price,
-        vehicleNumber: q.vehicleNumber,
-        files: signedFiles,
-        createdAt: q.createdAt,
-        selected: isSelected,
+      result.push({
+        tenderId: tender._id,
         tender: {
-          _id: q.tender?._id,
-          dispatchLocation: q.tender?.dispatchLocation,
-          address: q.tender?.address,
-          deliveryWindow: q.tender?.deliveryWindow || { from: null, to: null },
-          closeDate: q.tender?.closeDate,
-          status: q.tender?.status,
-          finalPrice: q.tender?.finalPrice,
-          remarks: q.tender?.remarks,
-          materials: q.tender?.materials || [],
-          totalWeight: q.tender?.totalWeight,
-          totalQuantity: q.tender?.totalQuantity,
-          createdBy: q.tender?.createdBy || null, // ✅ now includes name, email, and _id
+          dispatchLocation: tender.dispatchLocation,
+          address: tender.address,
+          deliveryWindow: tender.deliveryWindow || { from: null, to: null },
+          closeDate: tender.closeDate,
+          status: tender.status,
+          remarks: tender.remarks,
+          materials: tender.materials || [],
+          totalWeight: tender.totalWeight,
+          totalQuantity: tender.totalQuantity,
+          createdBy: tender.createdBy || null,
+          finalizedStatus: isSelected
+            ? "Your quotation was finalized"
+            : "Your quotation was not selected",
         },
-      };
-    });
+        quotations: formattedQuotes,
+      });
+    }
 
-    res.status(200).json({ success: true, data: formatted });
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
   } catch (error) {
     console.error("Error fetching quotation history:", error);
     res.status(500).json({ success: false, message: error.message });
