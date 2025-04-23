@@ -386,6 +386,14 @@ export const reopenTender = async (req, res) => {
     if (!tender)
       return res.status(404).json({ success: false, message: "Not found" });
 
+     // 🚫 Prevent reopening more than twice
+     if (tender.reopenCount >= 2) {
+      return res.status(403).json({
+        success: false,
+        message: "This tender has already been reopened twice and cannot be reopened again.",
+      });
+    }
+
     tender.status = "open";
     tender.selectedQuotation = null;
     tender.finalTransporter = null;
