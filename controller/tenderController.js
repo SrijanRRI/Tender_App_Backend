@@ -5,8 +5,9 @@ import mongoose from "mongoose";
 import User from "../models/userSchema.js"; // Replace with your actual user model path
 import { sendMail } from "../utils/sendMail.js"; // You must have this utility created
 import userModel from "../models/userSchema.js";
-
 // ✅ Create Tender with bidding window + delivery window
+import moment from 'moment-timezone';
+
 export const createTender = async (req, res) => {
   try {
     const {
@@ -27,6 +28,9 @@ export const createTender = async (req, res) => {
       purchaseOrder,
       projectRemark,
     } = req.body;
+
+    console.log("Received Bidding Start (Local):", biddingStart);
+    console.log("Received Bidding End (Local):", biddingEnd);
 
     // 🔐 Basic validations
     if (!projectName || !projectCode || !purchaseOrder) {
@@ -57,6 +61,14 @@ export const createTender = async (req, res) => {
       });
     }
 
+    // 🌐 Convert all date/time inputs from 'Asia/Kolkata' to UTC
+    const timezone = "Asia/Kolkata";
+    const utcBiddingStart = moment.tz(biddingStart, timezone).utc().toDate();
+    const utcBiddingEnd = moment.tz(biddingEnd, timezone).utc().toDate();
+    const utcDeliveryFrom = moment.tz(deliveryWindow.from, timezone).utc().toDate();
+    const utcDeliveryTo = moment.tz(deliveryWindow.to, timezone).utc().toDate();
+    const utcCloseDate = closeDate ? moment.tz(closeDate, timezone).utc().toDate() : null;
+
     const normalizedMaterials = materials.map((mat) => ({
       material: mat.material,
       subMaterial: mat.subMaterial || "",
@@ -72,12 +84,12 @@ export const createTender = async (req, res) => {
       materials: normalizedMaterials,
       transporters,
       remarks: remarks || "",
-      closeDate,
-      biddingStart: new Date(biddingStart),
-      biddingEnd: new Date(biddingEnd),
+      closeDate: utcCloseDate,
+      biddingStart: utcBiddingStart,
+      biddingEnd: utcBiddingEnd,
       deliveryWindow: {
-        from: new Date(deliveryWindow.from),
-        to: new Date(deliveryWindow.to),
+        from: utcDeliveryFrom,
+        to: utcDeliveryTo,
       },
       totalWeight,
       totalQuantity,
@@ -100,14 +112,8 @@ export const createTender = async (req, res) => {
     const htmlBody = `
       <h3>New Tender Assigned</h3>
       <p><strong>Dispatch Location:</strong> ${dispatchLocation}</p>
-      <p><strong>Delivery Window:</strong> ${new Date(
-        deliveryWindow.from
-      ).toLocaleDateString()} - ${new Date(
-      deliveryWindow.to
-    ).toLocaleDateString()}</p>
-      <p><strong>Bidding Ends:</strong> ${new Date(
-        biddingEnd
-      ).toLocaleDateString()}</p>
+      <p><strong>Delivery Window:</strong> ${moment(utcDeliveryFrom).tz(timezone).format('LL')} - ${moment(utcDeliveryTo).tz(timezone).format('LL')}</p>
+      <p><strong>Bidding Ends:</strong> ${moment(utcBiddingEnd).tz(timezone).format('LLL')}</p>
       <p><strong>Remarks:</strong> ${remarks || "N/A"}</p>
       <p>Login to your Transporter Dashboard to place your bids.</p>
     `;
@@ -122,6 +128,7 @@ export const createTender = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // ✅ 2. Finalize Tender
 
