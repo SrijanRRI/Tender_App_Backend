@@ -6,7 +6,7 @@ import User from "../models/userSchema.js"; // Replace with your actual user mod
 import { sendMail } from "../utils/sendMail.js"; // You must have this utility created
 import userModel from "../models/userSchema.js";
 // ✅ Create Tender with bidding window + delivery window
-import moment from 'moment-timezone';
+import moment from "moment-timezone";
 
 export const createTender = async (req, res) => {
   try {
@@ -65,9 +65,14 @@ export const createTender = async (req, res) => {
     const timezone = "Asia/Kolkata";
     const utcBiddingStart = moment.tz(biddingStart, timezone).utc().toDate();
     const utcBiddingEnd = moment.tz(biddingEnd, timezone).utc().toDate();
-    const utcDeliveryFrom = moment.tz(deliveryWindow.from, timezone).utc().toDate();
+    const utcDeliveryFrom = moment
+      .tz(deliveryWindow.from, timezone)
+      .utc()
+      .toDate();
     const utcDeliveryTo = moment.tz(deliveryWindow.to, timezone).utc().toDate();
-    const utcCloseDate = closeDate ? moment.tz(closeDate, timezone).utc().toDate() : null;
+    const utcCloseDate = closeDate
+      ? moment.tz(closeDate, timezone).utc().toDate()
+      : null;
 
     const normalizedMaterials = materials.map((mat) => ({
       material: mat.material,
@@ -107,15 +112,130 @@ export const createTender = async (req, res) => {
     });
 
     const transporterEmails = transporterUsers.map((user) => user.email);
-    const subject = "📦 New Tender Assigned - RR ISPAT";
+    const subject = "📦 New Tender Invitation - RR ISPAT";
 
+    // 🌟 Professional Multilingual Email Body
+    const websiteUrl = "https://logiyatra.rrispat.in/signin";
+    const supportEmail = "techsupport@rrispat.com";
+    const backgroundImageUrl =
+      "https://images.unsplash.com/photo-1526403227912-7d60d6cc6b4a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80";
     const htmlBody = `
-      <h3>New Tender Assigned</h3>
-      <p><strong>Dispatch Location:</strong> ${dispatchLocation}</p>
-      <p><strong>Delivery Window:</strong> ${moment(utcDeliveryFrom).tz(timezone).format('LL')} - ${moment(utcDeliveryTo).tz(timezone).format('LL')}</p>
-      <p><strong>Bidding Ends:</strong> ${moment(utcBiddingEnd).tz(timezone).format('LLL')}</p>
-      <p><strong>Remarks:</strong> ${remarks || "N/A"}</p>
-      <p>Login to your Transporter Dashboard to place your bids.</p>
+      <div style="margin:0; padding:0; background-image: url('${backgroundImageUrl}'); background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #f4f4f4;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:620px; background: #ffffff; margin-top:30px; margin-bottom:30px; border-radius:10px; overflow:hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
+
+          <tr>
+            <td align="center" style="background:rgb(12, 25, 206); background-size: 600% 600%; animation: gradientBG 8s ease infinite; padding: 20px;">
+             <div style="font-family: Arial, sans-serif; font-size: 28px; font-weight: bold;">
+                 <span style="color: #e74c3c;">RR</span> <span style="color: #ffffff;">ISPAT</span>
+             </div>
+                <div style="font-family: Arial, sans-serif; font-size: 14px; margin-top: 5px; color:#ffffff;">
+                  A Unit of Godawari Power and Ispat Limited
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px 30px 30px; font-family: Arial, sans-serif; color: #333; font-size: 16px;">
+
+              <h2 style="color:#2E86C1; text-align:center;">📢 New Tender Invitation</h2>
+
+              <p>Dear Transporter,<br/><small>(प्रिय ट्रांसपोर्टर)</small></p>
+
+              <p>We are excited to invite you to participate in a new tender from <strong>RR ISPAT</strong>.<br/><small>(RR ISPAT द्वारा एक नए टेंडर में भाग लेने के लिए आपका स्वागत है।)</small></p>
+
+              <table cellpadding="5" cellspacing="0" width="100%" style="margin: 25px 0;">
+                <tr>
+                  <td style="font-weight:bold; width:40%;">📍 Dispatch Location:</td>
+                  <td>
+                    ${dispatchLocation}
+                    <br/>
+                    <small style="color:#555;">(डिस्पैच स्थान: ${dispatchLocation})</small>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-weight:bold;">🚚 Delivery Window:</td>
+                  <td>
+                    ${moment(utcDeliveryFrom)
+                      .tz(timezone)
+                      .format("DD MMM YYYY")} to ${moment(utcDeliveryTo)
+      .tz(timezone)
+      .format("DD MMM YYYY")}
+                    <br/>
+                    <small style="color:#555;">(वितरण अवधि: ${moment(
+                      utcDeliveryFrom
+                    )
+                      .tz(timezone)
+                      .format("DD MMM YYYY")} से ${moment(utcDeliveryTo)
+      .tz(timezone)
+      .format("DD MMM YYYY")})</small>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-weight:bold;">🕒 Bidding Starts:</td>
+                  <td>
+                    ${moment(utcBiddingStart)
+                      .tz(timezone)
+                      .format("DD MMM YYYY, hh:mm A")}
+                    <br/>
+                    <small style="color:#555;">(बिडिंग प्रारंभ: ${moment(
+                      utcBiddingStart
+                    )
+                      .tz(timezone)
+                      .format("DD MMM YYYY, hh:mm A")})</small>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-weight:bold;">⏳ Bidding Ends:</td>
+                  <td>
+                    ${moment(utcBiddingEnd)
+                      .tz(timezone)
+                      .format("DD MMM YYYY, hh:mm A")}
+                    <br/>
+                    <small style="color:#555;">(बिडिंग समाप्ति: ${moment(
+                      utcBiddingEnd
+                    )
+                      .tz(timezone)
+                      .format("DD MMM YYYY, hh:mm A")})</small>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="text-align:center; margin:40px 0;">
+                <a href="${websiteUrl}" target="_blank" style="background:rgb(12, 25, 206); color:#fff; padding:14px 28px; font-size:16px; border-radius:6px; text-decoration:none; display:inline-block; box-shadow:0 4px 8px rgba(0,0,0,0.2);">
+                  🔗 Login to Dashboard<br/><small style="font-size:12px;">(डैशबोर्ड में लॉगिन करें)</small>
+                </a>
+              </div>
+
+              <p style="text-align:center; margin-top:30px;">
+                Need help? Email us at <a href="mailto:${supportEmail}" style="color:#2E86C1;">${supportEmail}</a><br/>
+                <small>(सहायता चाहिए? हमें ईमेल करें: ${supportEmail})</small>
+              </p>
+
+            <p style="margin-top:50px; font-family: Arial, sans-serif; font-size: 16px; color: #333; text-align: center;">
+               Thanks & Regards,<br>
+               <span style="font-weight:bold; font-size:18px;">RR ISPAT</span><br>
+               <small style="font-size: 13px; ">- A Unit of Godawari Power and Ispat Limited</small>
+                </p>
+      
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f1f1f1; text-align: center; padding: 20px; font-size: 12px; color: #777;">
+              Growing Stronger Together | <a href="${websiteUrl}" style="color: #2E86C1; text-decoration: none;">www.logiyatra.rrispat.in</a><br/>
+            </td>
+          </tr>
+
+        </table>
+
+        <style>
+          @keyframes gradientBG {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+          }
+        </style>
+      </div>
     `;
 
     for (const email of transporterEmails) {
@@ -129,24 +249,23 @@ export const createTender = async (req, res) => {
   }
 };
 
-
 // ✅ 2. Finalize Tender
 
 export const finalizeTender = async (req, res) => {
   try {
     const { quotationId, finalPrice } = req.body;
+    console.log(finalPrice)
 
+    // 🔎 Find tender
     const tender = await Tender.findById(req.params.id);
     if (!tender) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Tender not found" });
+      return res.status(404).json({ success: false, message: "Tender not found" });
     }
 
     if (tender.status === "finalized" || tender.selectedQuotation) {
-      return res.status(400).json({
-        success: false,
-        message: "Tender has already been finalized and cannot be changed.",
+      return res.status(400).json({ 
+        success: false, 
+        message: "Tender has already been finalized and cannot be changed." 
       });
     }
 
@@ -154,44 +273,100 @@ export const finalizeTender = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
+    // 🔎 Find quotation
     const quotation = await Quotation.findOne({
       _id: quotationId,
       tender: tender._id,
     });
-
     if (!quotation) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid quotation" });
+      return res.status(400).json({ success: false, message: "Invalid quotation" });
     }
 
+    // 🔎 Find transport user
     const transportUser = await userModel.findById(quotation.transportUser);
     if (!transportUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Transport user not found" });
+      return res.status(400).json({ success: false, message: "Transport user not found" });
     }
 
-    // ✅ Update tender with all finalization details
+    // ✅ Update tender with finalization
     tender.selectedQuotation = quotation._id;
     tender.finalTransporter = quotation.transportUser;
     tender.finalPrice = finalPrice;
     tender.status = "finalized";
-    // tender.winnerComment = `Manually finalized by ${req.user.name}`;
     await tender.save();
 
-    // ✅ Email notification
+    // ✅ Email Notification to Transport User
     try {
       await sendMail({
         to: transportUser.email,
-        subject: "🎉 Your Quotation Has Been Selected!",
+        subject: "🎉 Congratulations! Your Quotation Has Been Accepted - RR ISPAT",
         html: `
-          <p>Hello <strong>${transportUser.name}</strong>,</p>
-          <p>Great news! Your quotation for the tender <strong>#${tender._id}</strong> has been accepted.</p>
-          <p><strong>Final Price:</strong> ₹${finalPrice}</p>
-          <p>We appreciate your support. Further details will be communicated soon.</p>
-          <br/>
-          <p>Regards,<br/>RR ISPAT Team</p>
+          <div style="margin:0; padding:0; background-color:#f4f4f4;">
+            <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:620px; background:#ffffff; margin-top:30px; margin-bottom:30px; border-radius:10px; overflow:hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
+              
+              <tr>
+                <td align="center" style="background: #ffffff; padding: 30px;">
+                  <div style="font-family: Arial, sans-serif; font-size: 28px; font-weight: bold;">
+                    <span style="color: #e74c3c;">RR</span> <span style="color: #000;">ISPAT</span>
+                  </div>
+                  <div style="font-family: Arial, sans-serif; font-size: 13px; margin-top: 5px; color: #777;">
+                    A Unit of Godawari Power and Ispat Limited
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding: 40px 30px; font-family: Arial, sans-serif; color: #333; font-size: 16px;">
+
+                  <p>Hello <strong>${transportUser.name}</strong>,</p>
+
+                  <p style="margin-top:20px;">
+                    🎉 <strong>Congratulations!</strong> Your quotation has been <span style="color: #2E86C1;">ACCEPTED</span> for the following journey:
+                  </p>
+
+                  <table cellpadding="5" cellspacing="0" width="100%" style="margin: 20px 0;">
+                    <tr>
+                      <td style="font-weight:bold;">📍 Dispatch Location:</td>
+                      <td>${tender.dispatchLocation}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight:bold;">🚚 Delivery Window:</td>
+                      <td>${moment(tender.deliveryWindow.from).tz("Asia/Kolkata").format('DD MMM YYYY')} to ${moment(tender.deliveryWindow.to).tz("Asia/Kolkata").format('DD MMM YYYY')}</td>
+                    </tr>
+                  </table>
+
+                  <p style="margin-top:30px;"><strong>📦 Tender Items:</strong></p>
+                  <ul style="margin-top:10px; padding-left:20px;">
+                    ${tender.materials.map(mat => `
+                      <li>${mat.material} (${mat.subMaterial || 'N/A'}) - ${mat.weight} MT, ${mat.quantity} Qty</li>
+                    `).join('')}
+                  </ul>
+
+                  <p style="margin-top:30px;">
+                    <strong>✅ Finalized Price:</strong> ₹${finalPrice}
+                  </p>
+
+                  <p style="margin-top:30px;">
+                    We sincerely appreciate your cooperation. Further communication regarding dispatch schedules will follow shortly.
+                  </p>
+
+                  <p style="margin-top:40px;">
+                    Thanks & Regards,<br>
+                    <span style="font-weight:bold; font-size:18px;">RR ISPAT</span><br>
+                    <small style="color:#777;">A Unit of Godawari Power and Ispat Limited</small>
+                  </p>
+
+                </td>
+              </tr>
+
+              <tr>
+                <td style="background-color: #f1f1f1; text-align: center; padding: 15px; font-size: 12px; color: #777;">
+                  Building Strong Foundations | <a href="https://www.rrispat.com" style="color: #2E86C1; text-decoration: none;">www.rrispat.com</a>
+                </td>
+              </tr>
+
+            </table>
+          </div>
         `,
       });
     } catch (emailErr) {
@@ -388,7 +563,6 @@ export const getTenderQuotations = async (req, res) => {
   }
 };
 
-
 //reopen tender
 export const reopenTender = async (req, res) => {
   try {
@@ -407,7 +581,8 @@ export const reopenTender = async (req, res) => {
     if (tender.reopenCount >= 2) {
       return res.status(403).json({
         success: false,
-        message: "This tender has already been reopened twice and cannot be reopened again.",
+        message:
+          "This tender has already been reopened twice and cannot be reopened again.",
       });
     }
 
@@ -424,7 +599,7 @@ export const reopenTender = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Tender reopened successfully",
-      reopenCount: tender.reopenCount
+      reopenCount: tender.reopenCount,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -478,9 +653,6 @@ export const deleteTender = async (req, res) => {
 
 // ✅ Get Quotation History for Transporter
 
-
-
-
 export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
     const transporterId = new mongoose.Types.ObjectId(req.user.id);
@@ -519,9 +691,11 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
       const tender = tenderQuotes[0].tender;
 
       // ✅ Determine if any of the quotations match the selectedQuotation
-      const isSelected = tender.selectedQuotation && tenderQuotes.some(
-        (q) => q._id.toString() === tender.selectedQuotation.toString()
-      );
+      const isSelected =
+        tender.selectedQuotation &&
+        tenderQuotes.some(
+          (q) => q._id.toString() === tender.selectedQuotation.toString()
+        );
 
       const formattedQuotes = tenderQuotes.map((q) => {
         const signedFiles = (q.files || []).map((file) => {
