@@ -12,7 +12,7 @@ import cors from 'cors';
 const app = express();
 connectToDb()
 
-app.use(cors({ origin: [process.env.CLIENT_URL,"http://localhost:5173"] , credentials: true }));
+app.use(cors({ origin: [process.env.CLIENT_URL,"http://localhost:5173", "http://192.168.13.60"] , credentials: true }));
 
 
 app.use(express.json()); // Built-in middleware
