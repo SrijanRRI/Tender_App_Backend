@@ -47,11 +47,12 @@ export const login = async (req, res) => {
 
     // Generate token (include isApproved if needed in middleware)
     const token = user.jwtToken();
+    
 
     // 🔐 Cookie options for deployment
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // true in production (HTTPS)
+      secure: process.env.NODE_ENV === "production" , // true in production (HTTPS)
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax", // "None" allows cross-origin with credentials
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       path: "/",

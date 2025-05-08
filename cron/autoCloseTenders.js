@@ -1,18 +1,19 @@
-import cron from "node-cron";
-import Tender from "../models/tenderSchema.js";
+import cron from 'node-cron';
+import Tender from '../models/tenderSchema.js';
 
-// Run every day at midnight
+// Optional: Log on import to verify it runs
+console.log("[Cron] Tender auto-close scheduler loaded.");
+
 cron.schedule("0 0 * * *", async () => {
   console.log("[Cron] Auto-close check started...");
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // normalize to midnight
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
 
   try {
     const result = await Tender.updateMany(
-      {
-        closeDate: { $lt: today }
-      },
+      { closeDate: { $lt: tomorrow }, status: { $ne: "closed" } },
       { $set: { status: "closed" } }
     );
 

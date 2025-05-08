@@ -254,18 +254,20 @@ export const createTender = async (req, res) => {
 export const finalizeTender = async (req, res) => {
   try {
     const { quotationId, finalPrice } = req.body;
-    console.log(finalPrice)
+    console.log(finalPrice);
 
     // 🔎 Find tender
     const tender = await Tender.findById(req.params.id);
     if (!tender) {
-      return res.status(404).json({ success: false, message: "Tender not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
     }
 
     if (tender.status === "finalized" || tender.selectedQuotation) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Tender has already been finalized and cannot be changed." 
+      return res.status(400).json({
+        success: false,
+        message: "Tender has already been finalized and cannot be changed.",
       });
     }
 
@@ -279,13 +281,17 @@ export const finalizeTender = async (req, res) => {
       tender: tender._id,
     });
     if (!quotation) {
-      return res.status(400).json({ success: false, message: "Invalid quotation" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid quotation" });
     }
 
     // 🔎 Find transport user
     const transportUser = await userModel.findById(quotation.transportUser);
     if (!transportUser) {
-      return res.status(400).json({ success: false, message: "Transport user not found" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Transport user not found" });
     }
 
     // ✅ Update tender with finalization
@@ -299,7 +305,8 @@ export const finalizeTender = async (req, res) => {
     try {
       await sendMail({
         to: transportUser.email,
-        subject: "🎉 Congratulations! Your Quotation Has Been Accepted - RR ISPAT",
+        subject:
+          "🎉 Congratulations! Your Quotation Has Been Accepted - RR ISPAT",
         html: `
           <div style="margin:0; padding:0; background-color:#f4f4f4;">
             <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:620px; background:#ffffff; margin-top:30px; margin-bottom:30px; border-radius:10px; overflow:hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
@@ -331,15 +338,27 @@ export const finalizeTender = async (req, res) => {
                     </tr>
                     <tr>
                       <td style="font-weight:bold;">🚚 Delivery Window:</td>
-                      <td>${moment(tender.deliveryWindow.from).tz("Asia/Kolkata").format('DD MMM YYYY')} to ${moment(tender.deliveryWindow.to).tz("Asia/Kolkata").format('DD MMM YYYY')}</td>
+                      <td>${moment(tender.deliveryWindow.from)
+                        .tz("Asia/Kolkata")
+                        .format("DD MMM YYYY")} to ${moment(
+          tender.deliveryWindow.to
+        )
+          .tz("Asia/Kolkata")
+          .format("DD MMM YYYY")}</td>
                     </tr>
                   </table>
 
                   <p style="margin-top:30px;"><strong>📦 Tender Items:</strong></p>
                   <ul style="margin-top:10px; padding-left:20px;">
-                    ${tender.materials.map(mat => `
-                      <li>${mat.material} (${mat.subMaterial || 'N/A'}) - ${mat.weight} MT, ${mat.quantity} Qty</li>
-                    `).join('')}
+                    ${tender.materials
+                      .map(
+                        (mat) => `
+                      <li>${mat.material} (${mat.subMaterial || "N/A"}) - ${
+                          mat.weight
+                        } MT, ${mat.quantity} Qty</li>
+                    `
+                      )
+                      .join("")}
                   </ul>
 
                   <p style="margin-top:30px;">
@@ -677,7 +696,10 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
     for (const q of quotations) {
       const tender = q.tender;
       const tenderId = tender?._id?.toString();
-      if (!tenderId || new Date(tender.closeDate) >= today) continue;
+      if (!tenderId) continue;
+
+      const biddingEndTime = new Date(tender.biddingEnd);
+      if (biddingEndTime > new Date()) continue;
 
       if (!tenderQuotesMap.has(tenderId)) {
         tenderQuotesMap.set(tenderId, []);
