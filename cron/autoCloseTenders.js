@@ -7,13 +7,13 @@ console.log("[Cron] Tender auto-close scheduler loaded.");
 cron.schedule("0 0 * * *", async () => {
   console.log("[Cron] Auto-close check started...");
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
+  // Calculate end of "yesterday" (i.e., all tenders that closed before today)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // today at 00:00:00
 
   try {
     const result = await Tender.updateMany(
-      { closeDate: { $lt: tomorrow }, status: { $ne: "closed" } },
+      { closeDate: { $lt: today }, status: { $ne: "closed" } },
       { $set: { status: "closed" } }
     );
 
