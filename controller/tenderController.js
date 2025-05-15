@@ -27,6 +27,7 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark,
+      maxBidAmount,
     } = req.body;
 
     console.log("Received Bidding Start (Local):", biddingStart);
@@ -46,7 +47,16 @@ export const createTender = async (req, res) => {
         message: "Bidding start and end time are required",
       });
     }
-
+    if (
+      maxBidAmount === undefined ||
+      isNaN(maxBidAmount) ||
+      Number(maxBidAmount) < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid max bid amount is required and must be non-negative",
+      });
+    }
     if (!deliveryWindow?.from || !deliveryWindow?.to) {
       return res.status(400).json({
         success: false,
@@ -102,6 +112,7 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark: projectRemark || "",
+      maxBidAmount
     });
 
     await tender.save();
@@ -750,6 +761,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
           totalWeight: tender.totalWeight,
           totalQuantity: tender.totalQuantity,
           createdBy: tender.createdBy || null,
+          maxBidAmount: tender.maxBidAmount, 
           finalizedStatus: isSelected
             ? "Your quotation was finalized"
             : "Your quotation was not selected",

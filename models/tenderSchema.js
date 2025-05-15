@@ -70,6 +70,11 @@ const tenderSchema = new mongoose.Schema(
         return this.status === "finalized" || this.status === "closed";
       },
     },
+    maxBidAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
 
     // 🆕 Final winner (auto or manually selected)
     finalTransporter: {
@@ -83,7 +88,6 @@ const tenderSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-     
     },
     reopenCount: {
       type: Number,
@@ -99,6 +103,3 @@ const tenderSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("Tender", tenderSchema);
-
-
-
