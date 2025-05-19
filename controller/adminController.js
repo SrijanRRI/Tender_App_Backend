@@ -241,8 +241,6 @@ export const getApprovedTransportUsers = async (req, res) => {
   }
 };
 
-
-
 export const getAllTenders = async (req, res) => {
   try {
     // Step 1: Get all tenders with selectedQuotation and creator info
@@ -252,13 +250,13 @@ export const getAllTenders = async (req, res) => {
         path: "selectedQuotation",
         populate: {
           path: "transportUser",
-          select: "name email"
-        }
+          select: "name email",
+        },
       })
       .populate("createdBy", "name email");
 
     // Step 2: Fetch all quotations for all tenders
-    const tenderIds = tenders.map(t => t._id);
+    const tenderIds = tenders.map((t) => t._id);
     const allQuotations = await Quotation.find({ tender: { $in: tenderIds } })
       .populate("transportUser", "name email")
       .sort({ createdAt: -1 });
@@ -280,7 +278,7 @@ export const getAllTenders = async (req, res) => {
         vehicleNumber: q.vehicleNumber,
         createdAt: q.createdAt,
         transportUser: q.transportUser,
-        files: signedFiles
+        files: signedFiles,
       };
 
       const tid = q.tender.toString();
@@ -289,28 +287,94 @@ export const getAllTenders = async (req, res) => {
     }
 
     // Step 3: Attach quotations to each tender
-    const results = tenders.map(tender => {
+    const results = tenders.map((tender) => {
       const tenderObj = tender.toObject();
       tenderObj.quotations = quotationsByTender[tender._id.toString()] || [];
 
       // Add signed files to selectedQuotation too
       if (tenderObj.selectedQuotation && tenderObj.selectedQuotation.files) {
-        tenderObj.selectedQuotation.files = tenderObj.selectedQuotation.files.map(file => {
-          const key = file.url?.split("/").pop();
-          return {
-            ...file,
-            url: generateSignedUrl(key),
-          };
-        });
+        tenderObj.selectedQuotation.files =
+          tenderObj.selectedQuotation.files.map((file) => {
+            const key = file.url?.split("/").pop();
+            return {
+              ...file,
+              url: generateSignedUrl(key),
+            };
+          });
       }
 
       return tenderObj;
     });
 
     res.status(200).json({ success: true, data: results });
-
   } catch (error) {
     console.error("Error fetching tenders:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getRankedBestQuotationsWithDetails = async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+
+    const tender = await Tender.findById(tenderId);
+    if (!tender) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
+    }
+
+    const quotations = await Quotation.find({ tender: tenderId }).populate(
+      "transportUser",
+      "name email"
+    );
+
+    const bestByTransporter = new Map();
+
+    for (const q of quotations) {
+      const userId = q.transportUser._id.toString();
+      if (!bestByTransporter.has(userId)) {
+        bestByTransporter.set(userId, q);
+      } else {
+        const existing = bestByTransporter.get(userId);
+        if (q.price < existing.price) {
+          bestByTransporter.set(userId, q);
+        }
+      }
+    }
+
+    const bestQuotations = Array.from(bestByTransporter.values()).sort(
+      (a, b) => a.price - b.price
+    );
+
+    const rankedResults = bestQuotations.map((q, index) => {
+      return {
+        _id: q._id,
+        quotedPrice: q.price,
+        vehicleNumber: q.vehicleNumber,
+        rank: `L${index + 1}`,
+        selected:
+          tender.selectedQuotation?.toString() === q._id.toString()
+            ? "Yes"
+            : "No",
+        transporterName: q.transportUser?.name || "",
+        vendorEmail: q.transportUser?.email || "",
+        quotationDateTime: q.createdAt,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      tenderId,
+      tenderInfo: {
+        product: tender.materials[0]?.materialDetails || "",
+        subMaterial: tender.materials[0]?.subMaterial || "",
+        projectCode: tender.projectCode || "",
+      },
+      quotations: rankedResults,
+    });
+  } catch (error) {
+    console.error("Error generating ranked quotation report:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
