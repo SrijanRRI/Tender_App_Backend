@@ -11,17 +11,10 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors';
 const app = express();
 connectToDb()
-
 app.use(cors({ origin: [process.env.CLIENT_URL,"http://localhost:5173", "http://192.168.13.60", "http://192.168.13.77:5173"] , credentials: true }));
-
-
 app.use(express.json()); // Built-in middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Third-party middleware
-
-
-
-
 app.use('/api/auth',authRouter)
 app.use('/admin', adminRouter);
 app.use('/tenders',tenderRouter)
