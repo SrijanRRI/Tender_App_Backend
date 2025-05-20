@@ -6,7 +6,7 @@ import {
   rejectUser,
   getApprovedTransportUsers,
   getAllTenders,
-  getRankedBestQuotationsWithDetails,
+  getRankedBestQuotationsForAllTenders,
 } from "../controller/adminController.js";
 
 const adminRouter = express.Router();
@@ -17,6 +17,6 @@ adminRouter.put("/approve-user/:userId", approveUser);
 adminRouter.delete("/reject-user/:userId", rejectUser);
 adminRouter.get("/transport-users", getApprovedTransportUsers);
 adminRouter.get("/all-tender", getAllTenders);
-adminRouter.get("/tenders/:tenderId/ranked-best-report",jwtAuth , getRankedBestQuotationsWithDetails);
+adminRouter.get("/tenders/ranked-best-report",jwtAuth , getRankedBestQuotationsForAllTenders);
 
 export default adminRouter;

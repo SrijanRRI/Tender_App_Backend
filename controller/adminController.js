@@ -313,42 +313,37 @@ export const getAllTenders = async (req, res) => {
   }
 };
 
-export const getRankedBestQuotationsWithDetails = async (req, res) => {
+export const getRankedBestQuotationsForAllTenders = async (req, res) => {
   try {
-    const { tenderId } = req.params;
+    const tenders = await Tender.find().sort({ createdAt: -1 });
 
-    const tender = await Tender.findById(tenderId);
-    if (!tender) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Tender not found" });
-    }
+    const tenderReports = [];
 
-    const quotations = await Quotation.find({ tender: tenderId }).populate(
-      "transportUser",
-      "name email"
-    );
+    for (const tender of tenders) {
+      const quotations = await Quotation.find({ tender: tender._id }).populate(
+        "transportUser",
+        "name email"
+      );
 
-    const bestByTransporter = new Map();
+      const bestByTransporter = new Map();
 
-    for (const q of quotations) {
-      const userId = q.transportUser._id.toString();
-      if (!bestByTransporter.has(userId)) {
-        bestByTransporter.set(userId, q);
-      } else {
-        const existing = bestByTransporter.get(userId);
-        if (q.price < existing.price) {
+      for (const q of quotations) {
+        const userId = q.transportUser._id.toString();
+        if (!bestByTransporter.has(userId)) {
           bestByTransporter.set(userId, q);
+        } else {
+          const existing = bestByTransporter.get(userId);
+          if (q.price < existing.price) {
+            bestByTransporter.set(userId, q);
+          }
         }
       }
-    }
 
-    const bestQuotations = Array.from(bestByTransporter.values()).sort(
-      (a, b) => a.price - b.price
-    );
+      const bestQuotations = Array.from(bestByTransporter.values()).sort(
+        (a, b) => a.price - b.price
+      );
 
-    const rankedResults = bestQuotations.map((q, index) => {
-      return {
+      const rankedResults = bestQuotations.map((q, index) => ({
         _id: q._id,
         quotedPrice: q.price,
         vehicleNumber: q.vehicleNumber,
@@ -360,21 +355,51 @@ export const getRankedBestQuotationsWithDetails = async (req, res) => {
         transporterName: q.transportUser?.name || "",
         vendorEmail: q.transportUser?.email || "",
         quotationDateTime: q.createdAt,
-      };
-    });
+      }));
+
+      // Format product with subMaterial + weight/quantity
+      const formattedProduct = tender.materials
+        .map((m) => {
+          const material = m.material || "";
+          const sub = m.subMaterial ? `(${m.subMaterial})` : "";
+          const qty = `${m.weight || 0}kg / ${m.quantity || 0}pcs`;
+          return `${material} ${sub} - ${qty}`;
+        })
+        .join(", ");
+
+      tenderReports.push({
+        tenderId: tender._id,
+        tenderInfo: {
+          product: formattedProduct,
+          projectCode: tender.projectCode || "",
+          projectName: tender.projectName || "",
+          purchaseOrder: tender.purchaseOrder || "",
+          projectRemark: tender.projectRemark || "",
+          dispatchLocation: tender.dispatchLocation,
+          deliveryWindow: tender.deliveryWindow,
+          closeDate: tender.closeDate,
+          biddingStart: tender.biddingStart,
+          biddingEnd: tender.biddingEnd,
+          remarks: tender.remarks,
+          totalWeight: tender.totalWeight,
+          totalQuantity: tender.totalQuantity,
+          maxBidAmount: tender.maxBidAmount,
+          status: tender.status,
+          reopenCount: tender.reopenCount,
+          winnerComment: tender.winnerComment,
+          finalTransporter: tender.finalTransporter,
+        },
+        quotations: rankedResults,
+      });
+    }
 
     res.status(200).json({
       success: true,
-      tenderId,
-      tenderInfo: {
-        product: tender.materials[0]?.materialDetails || "",
-        subMaterial: tender.materials[0]?.subMaterial || "",
-        projectCode: tender.projectCode || "",
-      },
-      quotations: rankedResults,
+      count: tenderReports.length,
+      data: tenderReports,
     });
   } catch (error) {
-    console.error("Error generating ranked quotation report:", error);
+    console.error("Error generating all tender reports:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
