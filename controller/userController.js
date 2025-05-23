@@ -47,12 +47,12 @@ export const login = async (req, res) => {
 
     // Generate token (include isApproved if needed in middleware)
     const token = user.jwtToken();
-    
+
 
     // 🔐 Cookie options for deployment
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" , // true in production (HTTPS)
+      secure: process.env.NODE_ENV === "production", // true in production (HTTPS)
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax", // "None" allows cross-origin with credentials
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       path: "/",
@@ -76,9 +76,9 @@ export const login = async (req, res) => {
 };
 
 export const signup = async (req, res) => {
-  const { name, email, password, confirmPassword, role } = req.body;
+  const { name, email, phone, password, confirmPassword, role } = req.body;
 
-  if (!name || !email || !password || !confirmPassword) {
+  if (!name || !email || !phone || !password || !confirmPassword) {
     return res.status(400).json({
       success: false,
       message: "Every field is required",
@@ -109,10 +109,18 @@ export const signup = async (req, res) => {
       });
     }
 
+    if (!/^\d{10}$/.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid 10-digit phone number ",
+      });
+    }
+
     // Create a new user with the provided data
     const userInfo = new userModel({
       name,
       email,
+      phone,
       password,
       role: role || "user",
     });

@@ -13,6 +13,12 @@ const userSchema = new mongoose.Schema({
         required: [true, 'Email is mandatory'],
         unique: [true, 'already registered email'],
     },
+    phone: {
+        type: String,
+        required: true,
+        unique: true,
+        match: [/^\d{10}$/, 'Please enter a valid 10-digit phone number'],
+    },
     password: {
         type: String,
         required: true,
@@ -26,7 +32,7 @@ const userSchema = new mongoose.Schema({
     // New field for approval status
     isApproved: {
         type: Boolean,
-        default: function() {
+        default: function () {
             // Automatically approve regular users, but require approval for transportUsers
             return this.role === 'admin';
         }
@@ -49,11 +55,11 @@ userSchema.pre('save', async function (next) {
 userSchema.methods = {
     jwtToken() {
         return JWT.sign(
-            { 
-                id: this._id, 
-                email: this.email, 
+            {
+                id: this._id,
+                email: this.email,
                 role: this.role,
-                isApproved: this.isApproved 
+                isApproved: this.isApproved
             },
             process.env.SECRET,
             { expiresIn: '24h' }
