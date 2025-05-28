@@ -28,6 +28,7 @@ export const createTender = async (req, res) => {
       purchaseOrder,
       projectRemark,
       maxBidAmount,
+      maxBidUnit,
     } = req.body;
 
     console.log("Received Bidding Start (Local):", biddingStart);
@@ -47,16 +48,24 @@ export const createTender = async (req, res) => {
         message: "Bidding start and end time are required",
       });
     }
+
     if (
       maxBidAmount === undefined ||
       isNaN(maxBidAmount) ||
-      Number(maxBidAmount) < 0
-    ) {
+      Number(maxBidAmount) < 0) {
       return res.status(400).json({
         success: false,
         message: "Valid max bid amount is required and must be non-negative",
       });
     }
+
+    if (!maxBidUnit || !["Per MT", "Per Tender"].includes(maxBidUnit)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid max bid unit is required (Per MT or Per Tender)",
+      });
+    }
+
     if (!deliveryWindow?.from || !deliveryWindow?.to) {
       return res.status(400).json({
         success: false,
@@ -114,6 +123,7 @@ export const createTender = async (req, res) => {
       purchaseOrder,
       projectRemark: projectRemark || "",
       maxBidAmount,
+      maxBidUnit,
     });
 
     await tender.save();
@@ -168,46 +178,46 @@ export const createTender = async (req, res) => {
                   <td style="font-weight:bold;">🚚 Delivery Window:</td>
                   <td>
                     ${moment(utcDeliveryFrom)
-                      .tz(timezone)
-                      .format("DD MMM YYYY")} to ${moment(utcDeliveryTo)
-      .tz(timezone)
-      .format("DD MMM YYYY")}
+        .tz(timezone)
+        .format("DD MMM YYYY")} to ${moment(utcDeliveryTo)
+          .tz(timezone)
+          .format("DD MMM YYYY")}
                     <br/>
                     <small style="color:#555;">(वितरण अवधि: ${moment(
-                      utcDeliveryFrom
-                    )
-                      .tz(timezone)
-                      .format("DD MMM YYYY")} से ${moment(utcDeliveryTo)
-      .tz(timezone)
-      .format("DD MMM YYYY")})</small>
+            utcDeliveryFrom
+          )
+        .tz(timezone)
+        .format("DD MMM YYYY")} से ${moment(utcDeliveryTo)
+          .tz(timezone)
+          .format("DD MMM YYYY")})</small>
                   </td>
                 </tr>
                 <tr>
                   <td style="font-weight:bold;">🕒 Bidding Starts:</td>
                   <td>
                     ${moment(utcBiddingStart)
-                      .tz(timezone)
-                      .format("DD MMM YYYY, hh:mm A")}
+        .tz(timezone)
+        .format("DD MMM YYYY, hh:mm A")}
                     <br/>
                     <small style="color:#555;">(बिडिंग प्रारंभ: ${moment(
-                      utcBiddingStart
-                    )
-                      .tz(timezone)
-                      .format("DD MMM YYYY, hh:mm A")})</small>
+          utcBiddingStart
+        )
+        .tz(timezone)
+        .format("DD MMM YYYY, hh:mm A")})</small>
                   </td>
                 </tr>
                 <tr>
                   <td style="font-weight:bold;">⏳ Bidding Ends:</td>
                   <td>
                     ${moment(utcBiddingEnd)
-                      .tz(timezone)
-                      .format("DD MMM YYYY, hh:mm A")}
+        .tz(timezone)
+        .format("DD MMM YYYY, hh:mm A")}
                     <br/>
                     <small style="color:#555;">(बिडिंग समाप्ति: ${moment(
-                      utcBiddingEnd
-                    )
-                      .tz(timezone)
-                      .format("DD MMM YYYY, hh:mm A")})</small>
+          utcBiddingEnd
+        )
+        .tz(timezone)
+        .format("DD MMM YYYY, hh:mm A")})</small>
                   </td>
                 </tr>
               </table>
@@ -351,26 +361,25 @@ export const finalizeTender = async (req, res) => {
                     <tr>
                       <td style="font-weight:bold;">🚚 Delivery Window:</td>
                       <td>${moment(tender.deliveryWindow.from)
-                        .tz("Asia/Kolkata")
-                        .format("DD MMM YYYY")} to ${moment(
-          tender.deliveryWindow.to
-        )
-          .tz("Asia/Kolkata")
-          .format("DD MMM YYYY")}</td>
+            .tz("Asia/Kolkata")
+            .format("DD MMM YYYY")} to ${moment(
+              tender.deliveryWindow.to
+            )
+              .tz("Asia/Kolkata")
+              .format("DD MMM YYYY")}</td>
                     </tr>
                   </table>
 
                   <p style="margin-top:30px;"><strong>📦 Tender Items:</strong></p>
                   <ul style="margin-top:10px; padding-left:20px;">
                     ${tender.materials
-                      .map(
-                        (mat) => `
-                      <li>${mat.material} (${mat.subMaterial || "N/A"}) - ${
-                          mat.weight
-                        } MT, ${mat.quantity} Qty</li>
+            .map(
+              (mat) => `
+                      <li>${mat.material} (${mat.subMaterial || "N/A"}) - ${mat.weight
+                } MT, ${mat.quantity} Qty</li>
                     `
-                      )
-                      .join("")}
+            )
+            .join("")}
                   </ul>
 
                   <p style="margin-top:30px;">
@@ -763,6 +772,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
           totalQuantity: tender.totalQuantity,
           createdBy: tender.createdBy || null,
           maxBidAmount: tender.maxBidAmount,
+          maxBidUnit: tender.maxBidUnit || null,
           finalizedStatus: isSelected
             ? "Your quotation was finalized"
             : "Your quotation was not selected",
