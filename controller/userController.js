@@ -263,12 +263,12 @@ export const forgotPassword = async (req, res, next) => {
   }
 };
 
+
+
 export const resetPassword = async (req, res, next) => {
   const { token } = req.params;
   const { password, confirmPassword } = req.body;
-  console.log(token);
 
-  // return error message if password or confirmPassword is missing
   if (!password || !confirmPassword) {
     return res.status(400).json({
       success: false,
@@ -276,7 +276,6 @@ export const resetPassword = async (req, res, next) => {
     });
   }
 
-  // return error message if password and confirmPassword  are not same
   if (password !== confirmPassword) {
     return res.status(400).json({
       success: false,
@@ -285,17 +284,13 @@ export const resetPassword = async (req, res, next) => {
   }
 
   const hashToken = crypto.createHash("sha256").update(token).digest("hex");
-  console.log(hashToken);
 
   try {
     const user = await userModel.findOne({
       forgotPasswordToken: hashToken,
-      forgotPasswordExpiryDate: {
-        $gt: new Date(), // forgotPasswordExpiryDate() less the current date
-      },
+      forgotPasswordExpiryDate: { $gt: new Date() },
     });
 
-    // return the message if user not found
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -303,12 +298,22 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    user.password = password;
-    await user.save();
+    // Manually hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update password and clear reset fields
+    await userModel.updateOne(
+      { _id: user._id },
+      {
+        password: hashedPassword,
+        forgotPasswordToken: undefined,
+        forgotPasswordExpiryDate: undefined,
+      }
+    );
 
     return res.status(200).json({
       success: true,
-      message: "successfully reset the password",
+      message: "Successfully reset the password",
     });
   } catch (error) {
     return res.status(400).json({
@@ -317,6 +322,7 @@ export const resetPassword = async (req, res, next) => {
     });
   }
 };
+
 
 export const getAllUsers = async (req, res) => {
   try {
