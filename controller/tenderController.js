@@ -89,10 +89,11 @@ export const createTender = async (req, res) => {
       .utc()
       .toDate();
     const utcDeliveryTo = moment.tz(deliveryWindow.to, timezone).utc().toDate();
-    const utcCloseDate = closeDate
-      ? moment.tz(closeDate, timezone).utc().toDate()
-      : null;
-
+    let utcCloseDate = null;
+    if (closeDate) {
+      const [year, month, day] = closeDate.split("-").map(Number);
+      utcCloseDate = new Date(Date.UTC(year, month - 1, day));
+    }
     const normalizedMaterials = materials.map((mat) => ({
       material: mat.material,
       subMaterial: mat.subMaterial || "",
