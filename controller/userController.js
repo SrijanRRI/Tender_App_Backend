@@ -222,7 +222,14 @@ export const forgotPassword = async (req, res, next) => {
     const forgotPasswordToken = user.getForgotPasswordToken();
     console.log(forgotPasswordToken);
 
-    await user.save();
+   await userModel.updateOne(
+  { _id: user._id },
+  {
+    forgotPasswordToken: user.forgotPasswordToken,
+    forgotPasswordExpiryDate: user.forgotPasswordExpiryDate,
+  }
+);
+
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
