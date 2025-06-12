@@ -8,7 +8,7 @@ cron.schedule("0 0 * * *", async () => {
   const now = new Date();
 
   // Get today's local date (as Y-M-D), add 1 day → tomorrow local midnight
-  const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   try {
     const result = await Tender.updateMany(
