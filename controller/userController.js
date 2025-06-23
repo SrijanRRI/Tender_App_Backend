@@ -109,12 +109,6 @@ export const signup = async (req, res) => {
       });
     }
 
-    if (!/^\d{10}$/.test(phone)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide a valid 10-digit phone number ",
-      });
-    }
 
     // Create a new user with the provided data
     const userInfo = new userModel({

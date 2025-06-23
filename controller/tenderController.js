@@ -7,6 +7,7 @@ import { sendMail } from "../utils/sendMail.js"; // You must have this utility c
 import userModel from "../models/userSchema.js";
 // ✅ Create Tender with bidding window + delivery window
 import moment from "moment-timezone";
+import { sendWhatsAppTemplate } from "../utils/sendWhatsapp.js";
 
 export const createTender = async (req, res) => {
   try {
@@ -52,7 +53,8 @@ export const createTender = async (req, res) => {
     if (
       maxBidAmount === undefined ||
       isNaN(maxBidAmount) ||
-      Number(maxBidAmount) < 0) {
+      Number(maxBidAmount) < 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "Valid max bid amount is required and must be non-negative",
@@ -133,135 +135,28 @@ export const createTender = async (req, res) => {
       _id: { $in: transporters.map((id) => new mongoose.Types.ObjectId(id)) },
     });
 
-    const transporterEmails = transporterUsers.map((user) => user.email);
-    const subject = "📦 New Tender Invitation - RR ISPAT";
-
-    // 🌟 Professional Multilingual Email Body
-    const websiteUrl = "https://logiyatra.rrispat.in/signin";
-    const supportEmail = "techsupport@rrispat.com";
-    const backgroundImageUrl =
-      "https://images.unsplash.com/photo-1526403227912-7d60d6cc6b4a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80";
-    const htmlBody = `
-      <div style="margin:0; padding:0; background-image: url('${backgroundImageUrl}'); background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #f4f4f4;">
-        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:620px; background: #ffffff; margin-top:30px; margin-bottom:30px; border-radius:10px; overflow:hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
-
-          <tr>
-            <td align="center" style="background:rgb(12, 25, 206); background-size: 600% 600%; animation: gradientBG 8s ease infinite; padding: 20px;">
-             <div style="font-family: Arial, sans-serif; font-size: 28px; font-weight: bold;">
-                 <span style="color: #e74c3c;">RR</span> <span style="color: #ffffff;">ISPAT</span>
-             </div>
-                <div style="font-family: Arial, sans-serif; font-size: 14px; margin-top: 5px; color:#ffffff;">
-                  A Unit of Godawari Power and Ispat Limited
-              </div>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding: 40px 30px 30px 30px; font-family: Arial, sans-serif; color: #333; font-size: 16px;">
-
-              <h2 style="color:#2E86C1; text-align:center;">📢 New Tender Invitation</h2>
-
-              <p>Dear Transporter,<br/><small>(प्रिय ट्रांसपोर्टर)</small></p>
-
-              <p>We are excited to invite you to participate in a new tender from <strong>RR ISPAT</strong>.<br/><small>(RR ISPAT द्वारा एक नए टेंडर में भाग लेने के लिए आपका स्वागत है।)</small></p>
-
-              <table cellpadding="5" cellspacing="0" width="100%" style="margin: 25px 0;">
-                <tr>
-                  <td style="font-weight:bold; width:40%;">📍 Dispatch Location:</td>
-                  <td>
-                    ${dispatchLocation}
-                    <br/>
-                    <small style="color:#555;">(डिस्पैच स्थान: ${dispatchLocation})</small>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight:bold;">🚚 Delivery Window:</td>
-                  <td>
-                    ${moment(utcDeliveryFrom)
-        .tz(timezone)
-        .format("DD MMM YYYY")} to ${moment(utcDeliveryTo)
+    for (const user of transporterUsers) {
+      if (!user.phone) {
+        console.warn(
+          `⚠️ Skipping user without phone: ${user.name || user._id}`
+        );
+        continue; // Skip to the next user
+      }
+      const values = {
+        dispatch_location: dispatchLocation,
+        delivery_from: moment(utcDeliveryFrom)
           .tz(timezone)
-          .format("DD MMM YYYY")}
-                    <br/>
-                    <small style="color:#555;">(वितरण अवधि: ${moment(
-            utcDeliveryFrom
-          )
-        .tz(timezone)
-        .format("DD MMM YYYY")} से ${moment(utcDeliveryTo)
+          .format("DD MMM YYYY"),
+        delivery_to: moment(utcDeliveryTo).tz(timezone).format("DD MMM YYYY"),
+        start_datetime: moment(utcBiddingStart)
           .tz(timezone)
-          .format("DD MMM YYYY")})</small>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight:bold;">🕒 Bidding Starts:</td>
-                  <td>
-                    ${moment(utcBiddingStart)
-        .tz(timezone)
-        .format("DD MMM YYYY, hh:mm A")}
-                    <br/>
-                    <small style="color:#555;">(बिडिंग प्रारंभ: ${moment(
-          utcBiddingStart
-        )
-        .tz(timezone)
-        .format("DD MMM YYYY, hh:mm A")})</small>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight:bold;">⏳ Bidding Ends:</td>
-                  <td>
-                    ${moment(utcBiddingEnd)
-        .tz(timezone)
-        .format("DD MMM YYYY, hh:mm A")}
-                    <br/>
-                    <small style="color:#555;">(बिडिंग समाप्ति: ${moment(
-          utcBiddingEnd
-        )
-        .tz(timezone)
-        .format("DD MMM YYYY, hh:mm A")})</small>
-                  </td>
-                </tr>
-              </table>
+          .format("DD MMM YYYY, hh:mm A"),
+        end_datetime: moment(utcBiddingEnd)
+          .tz(timezone)
+          .format("DD MMM YYYY, hh:mm A"),
+      };
 
-              <div style="text-align:center; margin:40px 0;">
-                <a href="${websiteUrl}" target="_blank" style="background:rgb(12, 25, 206); color:#fff; padding:14px 28px; font-size:16px; border-radius:6px; text-decoration:none; display:inline-block; box-shadow:0 4px 8px rgba(0,0,0,0.2);">
-                  🔗 Login to Dashboard<br/><small style="font-size:12px;">(डैशबोर्ड में लॉगिन करें)</small>
-                </a>
-              </div>
-
-              <p style="text-align:center; margin-top:30px;">
-                Need help? Email us at <a href="mailto:${supportEmail}" style="color:#2E86C1;">${supportEmail}</a><br/>
-                <small>(सहायता चाहिए? हमें ईमेल करें: ${supportEmail})</small>
-              </p>
-
-            <p style="margin-top:50px; font-family: Arial, sans-serif; font-size: 16px; color: #333; text-align: center;">
-               Thanks & Regards,<br>
-               <span style="font-weight:bold; font-size:18px;">RR ISPAT</span><br>
-               <small style="font-size: 13px; ">- A Unit of Godawari Power and Ispat Limited</small>
-                </p>
-      
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background-color: #f1f1f1; text-align: center; padding: 20px; font-size: 12px; color: #777;">
-              Growing Stronger Together | <a href="${websiteUrl}" style="color: #2E86C1; text-decoration: none;">www.logiyatra.rrispat.in</a><br/>
-            </td>
-          </tr>
-
-        </table>
-
-        <style>
-          @keyframes gradientBG {
-            0% {background-position: 0% 50%;}
-            50% {background-position: 100% 50%;}
-            100% {background-position: 0% 50%;}
-          }
-        </style>
-      </div>
-    `;
-
-    for (const email of transporterEmails) {
-      await sendMail({ to: email, subject, html: htmlBody });
+      await sendWhatsAppTemplate(user.phone, values);
     }
 
     res.status(201).json({ success: true, data: tender });
@@ -361,25 +256,26 @@ export const finalizeTender = async (req, res) => {
                     <tr>
                       <td style="font-weight:bold;">🚚 Delivery Window:</td>
                       <td>${moment(tender.deliveryWindow.from)
-            .tz("Asia/Kolkata")
-            .format("DD MMM YYYY")} to ${moment(
-              tender.deliveryWindow.to
-            )
-              .tz("Asia/Kolkata")
-              .format("DD MMM YYYY")}</td>
+                        .tz("Asia/Kolkata")
+                        .format("DD MMM YYYY")} to ${moment(
+          tender.deliveryWindow.to
+        )
+          .tz("Asia/Kolkata")
+          .format("DD MMM YYYY")}</td>
                     </tr>
                   </table>
 
                   <p style="margin-top:30px;"><strong>📦 Tender Items:</strong></p>
                   <ul style="margin-top:10px; padding-left:20px;">
                     ${tender.materials
-            .map(
-              (mat) => `
-                      <li>${mat.material} (${mat.subMaterial || "N/A"}) - ${mat.weight
-                } MT, ${mat.quantity} Qty</li>
+                      .map(
+                        (mat) => `
+                      <li>${mat.material} (${mat.subMaterial || "N/A"}) - ${
+                          mat.weight
+                        } MT, ${mat.quantity} Qty</li>
                     `
-            )
-            .join("")}
+                      )
+                      .join("")}
                   </ul>
 
                   <p style="margin-top:30px;">
