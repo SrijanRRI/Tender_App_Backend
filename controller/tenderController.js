@@ -28,8 +28,8 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark,
-      maxBidAmount,
-      maxBidUnit,
+      // maxBidAmount,
+      // maxBidUnit,
     } = req.body;
 
     console.log("Received Bidding Start (Local):", biddingStart);
@@ -50,23 +50,23 @@ export const createTender = async (req, res) => {
       });
     }
 
-    if (
-      maxBidAmount === undefined ||
-      isNaN(maxBidAmount) ||
-      Number(maxBidAmount) < 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid max bid amount is required and must be non-negative",
-      });
-    }
+    // if (
+    //   maxBidAmount === undefined ||
+    //   isNaN(maxBidAmount) ||
+    //   Number(maxBidAmount) < 0
+    // ) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Valid max bid amount is required and must be non-negative",
+    //   });
+    // }
 
-    if (!maxBidUnit || !["Per MT", "Per Tender"].includes(maxBidUnit)) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid max bid unit is required (Per MT or Per Tender)",
-      });
-    }
+    // if (!maxBidUnit || !["Per MT", "Per Tender"].includes(maxBidUnit)) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Valid max bid unit is required (Per MT or Per Tender)",
+    //   });
+    // }
 
     if (!deliveryWindow?.from || !deliveryWindow?.to) {
       return res.status(400).json({
@@ -124,8 +124,8 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark: projectRemark || "",
-      maxBidAmount,
-      maxBidUnit,
+      // maxBidAmount,
+      // maxBidUnit,
     });
 
     await tender.save();
