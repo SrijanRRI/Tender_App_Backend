@@ -71,18 +71,18 @@ const tenderSchema = new mongoose.Schema(
       },
     },
 
-    maxBidAmount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
+    // maxBidAmount: {
+    //   type: Number,
+    //   required: true,
+    //   min: 0,
+    // },
 
-    maxBidUnit: {
-      type: String,
-      enum: ["Per MT", "Per Tender"],
-      required: true,
-      trim: true,
-    },
+    // maxBidUnit: {
+    //   type: String,
+    //   enum: ["Per MT", "Per Tender"],
+    //   required: true,
+    //   trim: true,
+    // },
 
     // 🆕 Final winner (auto or manually selected)
     finalTransporter: {
