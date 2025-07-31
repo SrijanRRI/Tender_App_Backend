@@ -340,7 +340,10 @@ export const getRankedBestQuotationsForAllTenders = async (req, res) => {
       }
 
       const bestQuotations = Array.from(bestByTransporter.values()).sort(
-        (a, b) => a.price - b.price
+        (a, b) => {
+          if (a.price !== b.price) return a.price - b.price;
+          return a.createdAt - b.createdAt;
+        }
       );
 
       const rankedResults = bestQuotations.map((q, index) => ({
