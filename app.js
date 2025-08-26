@@ -4,6 +4,7 @@ dotenv.config();
 import authRouter from './routes/userRouter.js';
 import adminRouter from './routes/adminRouter.js';
 import quotationRouter from './routes/quotationRouter.js';
+import shipmentRouter from './routes/shipmentPlanningRouter.js';
 import "./cron/autoCloseTenders.js";
 import tenderRouter from './routes/tenderRouter.js';
 import connectToDb from './config/dbConn.js';
@@ -19,6 +20,6 @@ app.use('/api/auth',authRouter)
 app.use('/admin', adminRouter);
 app.use('/tenders',tenderRouter)
 app.use('/quotation', quotationRouter);
-
+app.use('/shipment-planning',shipmentRouter)
 
 export default app;
