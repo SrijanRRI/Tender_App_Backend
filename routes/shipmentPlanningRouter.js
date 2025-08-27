@@ -1,13 +1,13 @@
 import express from "express";
 import {
-  getAllShipments,
   getShipmentById,
+  listShipments,
   updateShipmentStatus,
 } from "../controller/shipmentPlanningController.js";
 
 const shipmentRouter = express.Router();
 
-shipmentRouter.get("/", getAllShipments);          // GET all
+shipmentRouter.get("/",listShipments );          // GET all
 shipmentRouter.get("/:id", getShipmentById);       // GET by id
 shipmentRouter.put("/:id", updateShipmentStatus);  // PUT update status
 
