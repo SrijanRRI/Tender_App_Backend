@@ -7,6 +7,11 @@ const tenderSchema = new mongoose.Schema(
       ref: "user",
       required: true,
     },
+    shipmentPlan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ShipmentPlanning", // <-- matches your model name
+      default: null, // optional; not required
+    },
 
     deliveryWindow: {
       from: { type: Date, required: true },

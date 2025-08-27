@@ -12,6 +12,7 @@ import { sendWhatsAppTemplate } from "../utils/sendWhatsapp.js";
 export const createTender = async (req, res) => {
   try {
     const {
+      shipmentPlanId,
       dispatchLocation,
       address,
       pincode,
@@ -28,53 +29,27 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark,
-      // maxBidAmount,
-      // maxBidUnit,
     } = req.body;
 
-    console.log("Received Bidding Start (Local):", biddingStart);
-    console.log("Received Bidding End (Local):", biddingEnd);
-
-    // 🔐 Basic validations
+    // basic validations
     if (!projectName || !projectCode || !purchaseOrder) {
       return res.status(400).json({
         success: false,
         message: "Project name, code and PO are required",
       });
     }
-
     if (!biddingStart || !biddingEnd) {
       return res.status(400).json({
         success: false,
         message: "Bidding start and end time are required",
       });
     }
-
-    // if (
-    //   maxBidAmount === undefined ||
-    //   isNaN(maxBidAmount) ||
-    //   Number(maxBidAmount) < 0
-    // ) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Valid max bid amount is required and must be non-negative",
-    //   });
-    // }
-
-    // if (!maxBidUnit || !["Per MT", "Per Tender"].includes(maxBidUnit)) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Valid max bid unit is required (Per MT or Per Tender)",
-    //   });
-    // }
-
     if (!deliveryWindow?.from || !deliveryWindow?.to) {
       return res.status(400).json({
         success: false,
         message: "Delivery window (from and to dates) is required",
       });
     }
-
     if (!materials || !Array.isArray(materials) || materials.length === 0) {
       return res.status(400).json({
         success: false,
@@ -82,29 +57,38 @@ export const createTender = async (req, res) => {
       });
     }
 
-    // 🌐 Convert all date/time inputs from 'Asia/Kolkata' to UTC
+    // optional shipmentPlanId
+    let shipmentPlanRef = null;
+    if (shipmentPlanId) {
+      if (!mongoose.isValidObjectId(shipmentPlanId)) {
+        return res.status(400).json({ success: false, message: "Invalid shipmentPlanId" });
+      }
+      shipmentPlanRef = shipmentPlanId;
+    }
+
+    // time conversions (IST → UTC)
     const timezone = "Asia/Kolkata";
     const utcBiddingStart = moment.tz(biddingStart, timezone).utc().toDate();
-    const utcBiddingEnd = moment.tz(biddingEnd, timezone).utc().toDate();
-    const utcDeliveryFrom = moment
-      .tz(deliveryWindow.from, timezone)
-      .utc()
-      .toDate();
-    const utcDeliveryTo = moment.tz(deliveryWindow.to, timezone).utc().toDate();
+    const utcBiddingEnd   = moment.tz(biddingEnd, timezone).utc().toDate();
+    const utcDeliveryFrom = moment.tz(deliveryWindow.from, timezone).utc().toDate();
+    const utcDeliveryTo   = moment.tz(deliveryWindow.to, timezone).utc().toDate();
+
     let utcCloseDate = null;
     if (closeDate) {
       const [year, month, day] = closeDate.split("-").map(Number);
       utcCloseDate = new Date(Date.UTC(year, month - 1, day));
     }
-    const normalizedMaterials = materials.map((mat) => ({
-      material: mat.material,
-      subMaterial: mat.subMaterial || "",
-      weight: mat.weight,
-      quantity: mat.quantity,
+
+    const normalizedMaterials = materials.map((m) => ({
+      material: m.material,
+      subMaterial: m.subMaterial || "",
+      weight: m.weight,
+      quantity: m.quantity,
     }));
 
     const tender = new Tender({
       createdBy: req.user.id,
+      shipmentPlan: shipmentPlanRef || null,
       dispatchLocation,
       address,
       pincode,
@@ -114,50 +98,16 @@ export const createTender = async (req, res) => {
       closeDate: utcCloseDate,
       biddingStart: utcBiddingStart,
       biddingEnd: utcBiddingEnd,
-      deliveryWindow: {
-        from: utcDeliveryFrom,
-        to: utcDeliveryTo,
-      },
+      deliveryWindow: { from: utcDeliveryFrom, to: utcDeliveryTo },
       totalWeight,
       totalQuantity,
       projectName,
       projectCode,
       purchaseOrder,
       projectRemark: projectRemark || "",
-      // maxBidAmount,
-      // maxBidUnit,
     });
 
     await tender.save();
-
-    // 📨 Notify transporters
-    const transporterUsers = await User.find({
-      _id: { $in: transporters.map((id) => new mongoose.Types.ObjectId(id)) },
-    });
-
-    for (const user of transporterUsers) {
-      if (!user.phone) {
-        console.warn(
-          `⚠️ Skipping user without phone: ${user.name || user._id}`
-        );
-        continue; // Skip to the next user
-      }
-      const values = {
-        dispatch_location: dispatchLocation,
-        delivery_from: moment(utcDeliveryFrom)
-          .tz(timezone)
-          .format("DD MMM YYYY"),
-        delivery_to: moment(utcDeliveryTo).tz(timezone).format("DD MMM YYYY"),
-        start_datetime: moment(utcBiddingStart)
-          .tz(timezone)
-          .format("DD MMM YYYY, hh:mm A"),
-        end_datetime: moment(utcBiddingEnd)
-          .tz(timezone)
-          .format("DD MMM YYYY, hh:mm A"),
-      };
-
-      await sendWhatsAppTemplate(user.phone, values);
-    }
 
     res.status(201).json({ success: true, data: tender });
   } catch (error) {
@@ -165,6 +115,7 @@ export const createTender = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // ✅ 2. Finalize Tender
 
@@ -852,5 +803,163 @@ export const getMyQuotationPosition = async (req, res) => {
   } catch (error) {
     console.error("Error getting bid position:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+/**
+ * POST /api/tenders/:id/notify
+ * Optional body:
+ *  - transporterIds?: string[]  // override: notify these users only (subset)
+ *  - dryRun?: boolean           // if true, nothing is sent; payload preview returned
+ */
+export const notifyTenderTransporters = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid tender id" });
+    }
+
+    const tender = await Tender.findById(id).lean();
+    if (!tender) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Tender not found" });
+    }
+
+    // Ensure tender has transporter IDs
+    const tenderTransporters = Array.isArray(tender.transporters)
+      ? tender.transporters
+      : [];
+    if (tenderTransporters.length === 0) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "No transporters attached to this tender",
+        });
+    }
+
+    // Optional override: only notify given transporterIds (must be subset)
+    const { transporterIds = [], dryRun = false } = req.body || {};
+    let targetIds = tenderTransporters.map(String);
+
+    if (Array.isArray(transporterIds) && transporterIds.length > 0) {
+      const override = transporterIds.filter((x) =>
+        targetIds.includes(String(x))
+      );
+      if (override.length === 0) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Provided transporterIds are not part of this tender",
+          });
+      }
+      targetIds = override;
+    }
+
+    // Load users
+    const users = await User.find({
+      _id: { $in: targetIds.map((x) => new mongoose.Types.ObjectId(x)) },
+    })
+      .select("_id name phone")
+      .lean();
+
+    const timezone = "Asia/Kolkata";
+
+    // Build template values from tender
+    const values = {
+      dispatch_location: `${tender.dispatchLocation} (${tender.pincode || ""})`,
+      delivery_from: moment(tender?.deliveryWindow?.from)
+        .tz(timezone)
+        .format("DD MMM YYYY"),
+      delivery_to: moment(tender?.deliveryWindow?.to)
+        .tz(timezone)
+        .format("DD MMM YYYY"),
+      start_datetime: moment(tender?.biddingStart)
+        .tz(timezone)
+        .format("DD MMM YYYY, hh:mm A"),
+      end_datetime: moment(tender?.biddingEnd)
+        .tz(timezone)
+        .format("DD MMM YYYY, hh:mm A"),
+      // You can add more fields if your template has them:
+      // project_name: tender.projectName,
+      // project_code: tender.projectCode,
+      // purchase_order: tender.purchaseOrder,
+    };
+
+    // If dryRun: return preview without sending
+    if (dryRun) {
+      return res.json({
+        success: true,
+        dryRun: true,
+        templatePreview: values,
+        recipientsPreview: users.map((u) => ({
+          id: u._id,
+          name: u.name,
+          phone: u.phone || null,
+        })),
+      });
+    }
+
+    // Send to users who have phone numbers
+    const results = [];
+    let sent = 0;
+    let skipped = 0;
+
+    for (const u of users) {
+      if (!u.phone) {
+        results.push({
+          userId: u._id,
+          name: u.name || "",
+          status: "skipped",
+          reason: "missing_phone",
+        });
+        skipped += 1;
+        continue;
+      }
+      try {
+        await sendWhatsAppTemplate(u.phone, values);
+        results.push({
+          userId: u._id,
+          name: u.name || "",
+          phone: u.phone,
+          status: "sent",
+        });
+        sent += 1;
+      } catch (e) {
+        results.push({
+          userId: u._id,
+          name: u.name || "",
+          phone: u.phone,
+          status: "failed",
+          error: e.message,
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      tenderId: id,
+      counts: {
+        total: users.length,
+        sent,
+        skipped,
+        failed: results.filter((r) => r.status === "failed").length,
+      },
+      valuesUsed: values,
+      results,
+    });
+  } catch (err) {
+    console.error("notifyTenderTransporters error:", err);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to send WhatsApp notifications",
+      });
   }
 };
