@@ -11,6 +11,7 @@ import {
   getUpcomingTendersForTransporter,
   reopenTender,
   getQuotationHistoryForTransporter,
+  notifyTenderTransporters,
   // getAllFinalizedTendersWithQuotations
 } from "../controller/tenderController.js";
 
@@ -49,6 +50,6 @@ router.get("/transporter/upcoming", jwtAuth, getUpcomingTendersForTransporter);
 
 router.post("/reopen/:id", jwtAuth, reopenTender);
 
-
+router.post("/:id/notify", notifyTenderTransporters);
 
 export default router;
