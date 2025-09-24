@@ -29,6 +29,7 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark,
+      priceDifference, // <-- accept from frontend
     } = req.body;
 
     // basic validations
@@ -66,6 +67,20 @@ export const createTender = async (req, res) => {
       shipmentPlanRef = shipmentPlanId;
     }
 
+    // validate priceDifference if provided
+    let priceDifferenceValue;
+    if (priceDifference !== undefined && priceDifference !== null && priceDifference !== "") {
+      const n = Number(priceDifference);
+      if (!Number.isFinite(n)) {
+        return res.status(400).json({
+          success: false,
+          message: "priceDifference must be a valid number",
+        });
+      }
+      
+      priceDifferenceValue = n;
+    }
+
     // time conversions (IST → UTC)
     const timezone = "Asia/Kolkata";
     const utcBiddingStart = moment.tz(biddingStart, timezone).utc().toDate();
@@ -86,7 +101,7 @@ export const createTender = async (req, res) => {
       quantity: m.quantity,
     }));
 
-    const tender = new Tender({
+    const tenderPayload = {
       createdBy: req.user.id,
       shipmentPlan: shipmentPlanRef || null,
       dispatchLocation,
@@ -105,8 +120,14 @@ export const createTender = async (req, res) => {
       projectCode,
       purchaseOrder,
       projectRemark: projectRemark || "",
-    });
+    };
 
+    // only set if provided so Mongoose default can apply otherwise
+    if (priceDifferenceValue !== undefined) {
+      tenderPayload.priceDifference = priceDifferenceValue;
+    }
+
+    const tender = new Tender(tenderPayload);
     await tender.save();
 
     res.status(201).json({ success: true, data: tender });
@@ -118,7 +139,6 @@ export const createTender = async (req, res) => {
 
 
 // ✅ 2. Finalize Tender
-
 export const finalizeTender = async (req, res) => {
   try {
     const { quotationId, finalPrice } = req.body;
@@ -272,17 +292,69 @@ export const finalizeTender = async (req, res) => {
 };
 
 // ✅ 3. Get All Tenders Created by RR User
+// ✅ 3. Get All Tenders Created by RR User — only page & limit
+
+
 export const getAllTendersByRRUser = async (req, res) => {
   try {
-    const tenders = await Tender.find({ createdBy: req.user.id })
-      .sort({ createdAt: -1 })
-      .populate("selectedQuotation");
+    const page  = Math.max(parseInt(req.query.page ?? "1", 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit ?? "20", 10) || 20, 1), 100);
 
-    res.status(200).json({ success: true, data: tenders });
+    const match = { createdBy: req.user.id };
+
+    const [tenders, total] = await Promise.all([
+      Tender.find(match)
+        .sort({ createdAt: -1, _id: -1 }) // newest first, stable tie-breaker
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select({
+          projectName: 1,
+          projectCode: 1,
+          purchaseOrder: 1,
+          dispatchLocation: 1,
+          address: 1,
+          pincode: 1,
+          deliveryWindow: 1,
+          totalWeight: 1,
+          totalQuantity: 1,
+          status: 1,
+          reopenCount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          selectedQuotation: 1,
+          finalPrice: 1,
+        })
+        .populate({
+          path: "selectedQuotation",
+          select: "price vehicleNumber transportUser createdAt",
+          populate: { path: "transportUser", select: "name email" },
+        })
+        .lean(),
+      Tender.countDocuments(match),
+    ]);
+
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+
+    return res.status(200).json({
+      success: true,
+      data: tenders,
+      pagination: {
+        page,
+        limit,
+        totalDocs: total,
+        totalPages,
+        hasPrevPage: page > 1,
+        hasNextPage: page < totalPages,
+        prevPage: page > 1 ? page - 1 : null,
+        nextPage: page < totalPages ? page + 1 : null,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("getAllTendersByRRUser error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Server error" });
   }
 };
+
 
 // ✅ 4. Get Tenders Assigned to a Transporter (excluding already quoted ones)
 

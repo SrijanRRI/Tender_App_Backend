@@ -106,7 +106,11 @@ const tenderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-
+     priceDifference: {
+      type: Number,      // numeric value
+      default: 0,        // or null if you prefer: default: null
+      min: 0,         // uncomment if you never want negatives
+    },
     projectName: { type: String, required: true },
     projectCode: { type: String, required: true },
     purchaseOrder: { type: String, required: true, trim: true },

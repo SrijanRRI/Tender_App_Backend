@@ -9,7 +9,16 @@ export const submitQuotation = async (req, res) => {
     const userId = req.user.id;
     const tenderId = req.params.id;
 
-    // 1. Validate Tender
+    // Basic validation
+    const numericPrice = Number(price);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid positive price",
+      });
+    }
+
+    // 1) Validate Tender
     const tender = await Tender.findById(tenderId);
     if (!tender || tender.status !== "open") {
       return res.status(400).json({
@@ -26,12 +35,16 @@ export const submitQuotation = async (req, res) => {
       });
     }
 
-    // 2. Count previous quotations (3-bid limit)
+    // 🔹 Use tender.priceDifference (fallback to 30 if missing/invalid)
+    const minDelta = Number.isFinite(Number(tender.priceDifference)) && Number(tender.priceDifference) >= 0
+      ? Number(tender.priceDifference)
+      : 30;
+
+    // 2) Enforce 3-bid limit per user for this tender
     const bidCount = await Quotation.countDocuments({
       tender: tenderId,
       transportUser: userId,
     });
-
     if (bidCount >= 3) {
       return res.status(403).json({
         success: false,
@@ -39,9 +52,51 @@ export const submitQuotation = async (req, res) => {
       });
     }
 
-    // 3. Upload file (if provided)
-    let uploadedFiles = [];
+    // 3) Compute current L1 (lowest among each transporter's best price)
+    const allQuotes = await Quotation.find({ tender: tenderId }).sort({
+      price: 1,
+      createdAt: 1,
+    });
 
+    const bestQuotesMap = new Map(); // transportUserId => bestQuotation
+    for (const q of allQuotes) {
+      const uid = q.transportUser.toString();
+      if (!bestQuotesMap.has(uid)) {
+        bestQuotesMap.set(uid, q); // first is the lowest due to sort
+      }
+    }
+
+    let L1 = null;
+    for (const [, q] of bestQuotesMap.entries()) {
+      if (!L1 || q.price < L1.price || (q.price === L1.price && q.createdAt < q.createdAt)) {
+        L1 = q;
+      }
+    }
+
+    // 4) Rule: if new price is below L1, it must beat L1 by at least tender.priceDifference
+    if (L1 && numericPrice < L1.price) {
+      const diff = L1.price - numericPrice;
+      if (diff < minDelta) {
+        return res.status(400).json({
+          success: false,
+          message: `Given quoted price difference must be ${minDelta}`,
+          data: {
+            currentL1: {
+              quotationId: L1._id,
+              transportUser: L1.transportUser,
+              createdAt: L1.createdAt,
+              vehicleNumber: L1.vehicleNumber,
+            },
+            yourPrice: numericPrice,
+            difference: diff,
+            minimumRequiredDifference: minDelta,
+          },
+        });
+      }
+    }
+
+    // 5) Upload file (if provided)
+    let uploadedFiles = [];
     if (req.file) {
       const file = req.file;
       const filename = Date.now() + "-" + file.originalname;
@@ -63,34 +118,48 @@ export const submitQuotation = async (req, res) => {
       });
     }
 
-    // 4. Save Quotation
+    // 6) Save Quotation
     const quotation = new Quotation({
       tender: tender._id,
       transportUser: userId,
-      price,
+      price: numericPrice,
       vehicleNumber,
       files: uploadedFiles,
     });
-
     await quotation.save();
 
-    // 5. Link quotation to tender
+    // 7) Link quotation to tender
     tender.quotations.push(quotation._id);
     await tender.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: `Quotation ${bidCount + 1}/3 submitted successfully.`,
-      data: quotation,
+      data: {
+        quotation,
+        validationSnapshot: L1
+          ? {
+              yourPrice: numericPrice,
+              wasBelowL1: numericPrice < L1.price,
+              requiredMinDeltaIfBelowL1: minDelta,
+            }
+          : {
+              currentL1PriceBeforeSubmit: null,
+              yourPrice: numericPrice,
+              wasBelowL1: false,
+              requiredMinDeltaIfBelowL1: minDelta,
+            },
+      },
     });
   } catch (error) {
     console.error("Quotation submission error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Something went wrong: " + error.message,
     });
   }
 };
+
 
 //get all quotations for a tender
 
