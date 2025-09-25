@@ -23,7 +23,7 @@ const router = express.Router();
 router.post("/create-tender", jwtAuth, createTender);
 
 // ✅ 2. Get all tenders created by RR user
-router.get("/my-tenders", jwtAuth, getAllTendersByRRUser);
+router.get("/my-tenders", getAllTendersByRRUser);
 
 // ✅ 3. Get all tenders assigned to a transporter
 router.get("/assigned", jwtAuth, getTendersForTransporter);
