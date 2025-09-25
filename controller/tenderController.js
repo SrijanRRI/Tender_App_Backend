@@ -291,23 +291,31 @@ export const finalizeTender = async (req, res) => {
   }
 };
 
-// ✅ 3. Get All Tenders Created by RR User
-// ✅ 3. Get All Tenders Created by RR User — only page & limit
 
 
 // ✅ 3. Get All Tenders Created by RR User — pagination only
+
 export const getAllTendersByRRUser = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
+    const { userId } = req.query;
+
+    // Build filter: if userId provided, filter by it; else no filter (all tenders)
+    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid userId" });
+    }
+    const filter = userId ? { createdBy: userId } : {};
 
     const [tenders, total] = await Promise.all([
-      Tender.find({ createdBy: req.user.id })
+      Tender.find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate("selectedQuotation"),
-      Tender.countDocuments({ createdBy: req.user.id }),
+      Tender.countDocuments(filter),
     ]);
 
     res.status(200).json({
@@ -324,6 +332,7 @@ export const getAllTendersByRRUser = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 
 
