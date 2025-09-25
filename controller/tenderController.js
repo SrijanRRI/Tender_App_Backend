@@ -295,65 +295,36 @@ export const finalizeTender = async (req, res) => {
 // ✅ 3. Get All Tenders Created by RR User — only page & limit
 
 
+// ✅ 3. Get All Tenders Created by RR User — pagination only
 export const getAllTendersByRRUser = async (req, res) => {
   try {
-    const page  = Math.max(parseInt(req.query.page ?? "1", 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit ?? "20", 10) || 20, 1), 100);
-
-    const match = { createdBy: req.user.id };
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
 
     const [tenders, total] = await Promise.all([
-      Tender.find(match)
-        .sort({ createdAt: -1, _id: -1 }) // newest first, stable tie-breaker
+      Tender.find({ createdBy: req.user.id })
+        .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .select({
-          projectName: 1,
-          projectCode: 1,
-          purchaseOrder: 1,
-          dispatchLocation: 1,
-          address: 1,
-          pincode: 1,
-          deliveryWindow: 1,
-          totalWeight: 1,
-          totalQuantity: 1,
-          status: 1,
-          reopenCount: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          selectedQuotation: 1,
-          finalPrice: 1,
-        })
-        .populate({
-          path: "selectedQuotation",
-          select: "price vehicleNumber transportUser createdAt",
-          populate: { path: "transportUser", select: "name email" },
-        })
-        .lean(),
-      Tender.countDocuments(match),
+        .populate("selectedQuotation"),
+      Tender.countDocuments({ createdBy: req.user.id }),
     ]);
 
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      data: tenders,
+      data: tenders, // full docs as usual
       pagination: {
         page,
         limit,
-        totalDocs: total,
-        totalPages,
-        hasPrevPage: page > 1,
-        hasNextPage: page < totalPages,
-        prevPage: page > 1 ? page - 1 : null,
-        nextPage: page < totalPages ? page + 1 : null,
+        total,
+        totalPages: Math.max(Math.ceil(total / limit), 1),
       },
     });
   } catch (error) {
-    console.error("getAllTendersByRRUser error:", error);
-    return res.status(500).json({ success: false, message: error.message || "Server error" });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 
 // ✅ 4. Get Tenders Assigned to a Transporter (excluding already quoted ones)
