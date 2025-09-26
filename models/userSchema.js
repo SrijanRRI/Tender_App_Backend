@@ -1,12 +1,12 @@
-import mongoose from 'mongoose'
-import crypto from 'crypto'
-import bcrypt from 'bcrypt'
-import JWT from 'jsonwebtoken'
+import mongoose from "mongoose";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import JWT from "jsonwebtoken";
 
 const ApprovalsSchema = new mongoose.Schema(
   {
     requiredApprovals: { type: Number, default: 2, min: 1 },
-    approvedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'user' }],
+    approvedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
     finalizedAt: { type: Date, default: null },
   },
   { _id: false }
@@ -16,12 +16,12 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Name is mandatory'],
+      required: [true, "Name is mandatory"],
     },
     email: {
       type: String,
-      required: [true, 'Email is mandatory'],
-      unique: [true, 'already registered email'],
+      required: [true, "Email is mandatory"],
+      unique: [true, "already registered email"],
     },
     phone: {
       type: String,
@@ -35,16 +35,23 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin', 'transportUser'],
-      default: 'user',
+      enum: ["user", "admin", "transportUser"],
+      default: "user",
     },
-
+    gstn: {
+      type: String,     
+      trim: true,
+      uppercase: true,
+      unique: true, // if you want no duplicates
+      sparse: true, // allows null/undefined users without gstn
+      match: [/^[0-9A-Z]{15}$/, "Invalid GST Number"], // regex for GSTIN
+    },
     // Final approval flag used across your app
     isApproved: {
       type: Boolean,
       default: function () {
         // Auto-approve admins; everyone else requires explicit approval(s)
-        return this.role === 'admin';
+        return this.role === "admin";
       },
     },
 
@@ -62,10 +69,10 @@ const userSchema = new mongoose.Schema(
 
 // ---- Indexes ----
 // Avoid duplicate approver IDs for a user (enforced by app logic, this helps performance)
-userSchema.index({ _id: 1, 'approvals.approvedBy': 1 });
+userSchema.index({ _id: 1, "approvals.approvedBy": 1 });
 
 // ---- Virtuals ----
-userSchema.virtual('approvalCount').get(function () {
+userSchema.virtual("approvalCount").get(function () {
   return this.approvals?.approvedBy?.length || 0;
 });
 
@@ -80,16 +87,16 @@ userSchema.methods = {
         isApproved: this.isApproved,
       },
       process.env.SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: "24h" }
     );
   },
 
   getForgotPasswordToken() {
-    const forgotToken = crypto.randomBytes(20).toString('hex');
+    const forgotToken = crypto.randomBytes(20).toString("hex");
     this.forgotPasswordToken = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(forgotToken)
-      .digest('hex');
+      .digest("hex");
 
     this.forgotPasswordExpiryDate = Date.now() + 20 * 60 * 1000;
     return forgotToken;
@@ -103,13 +110,13 @@ userSchema.methods = {
 };
 
 // ---- Hooks ----
-userSchema.pre('save', async function (next) {
+userSchema.pre("save", async function (next) {
   // Hash password if changed
-  if (this.isModified('password')) {
+  if (this.isModified("password")) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   return next();
 });
 
-const userModel = mongoose.model('user', userSchema);
+const userModel = mongoose.model("user", userSchema);
 export default userModel;

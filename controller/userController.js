@@ -76,7 +76,7 @@ export const login = async (req, res) => {
 };
 
 export const signup = async (req, res) => {
-  const { name, email, phone, password, confirmPassword, role } = req.body;
+  const { name, email, phone, password, confirmPassword, role, gstn } = req.body;
 
   if (!name || !email || !phone || !password || !confirmPassword) {
     return res.status(400).json({
@@ -85,63 +85,68 @@ export const signup = async (req, res) => {
     });
   }
 
-  const validEmail = emailValidator.validate(email);
-  if (!validEmail) {
+  if (!emailValidator.validate(email)) {
     return res.status(400).json({
       success: false,
       message: "Please provide a valid email address 📩",
     });
   }
 
+  // Role validation - only allow 'user' and 'transportUser'
+  if (role && !["user", "transportUser"].includes(role)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid role specified",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Password and confirm password do not match ❌",
+    });
+  }
+
+  // Business rule: transportUser must provide GSTN
+  if ((role || "user") === "transportUser" && !gstn) {
+    return res.status(400).json({
+      success: false,
+      message: "GSTIN is required for transport users",
+    });
+  }
+
   try {
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "password and confirm Password does not match ❌",
-      });
-    }
-
-    // Role validation - only allow 'user' and 'transportUser' roles during signup
-    if (role && !["user", "transportUser"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role specified",
-      });
-    }
-
-
-    // Create a new user with the provided data
     const userInfo = new userModel({
       name,
       email,
       phone,
       password,
       role: role || "user",
+      gstn: gstn ? gstn.trim().toUpperCase() : undefined, // schema handles regex validation
     });
 
     const result = await userInfo.save();
 
-    // Prepare response with appropriate message for transportUsers
-    let message = "Account created successfully";
-    if (role === "transportUser" || role === "user") {
+    let message = "Account created successfully.";
+    if (result.role === "user" || result.role === "transportUser") {
       message =
         "Account created successfully. Please wait for admin approval before you can login.";
     }
 
-    // Don't send password in response
-    const sanitizedResult = result.toObject();
-    delete sanitizedResult.password;
+    const sanitized = result.toObject();
+    delete sanitized.password;
 
     return res.status(200).json({
       success: true,
       message,
-      data: sanitizedResult,
+      data: sanitized,
     });
   } catch (error) {
-    if (error.code === 11000) {
+    if (error.code === 11000 && error.keyValue) {
+      const field = Object.keys(error.keyValue)[0] || "field";
       return res.status(400).json({
         success: false,
-        message: `Account already exist with the provided email ${email} 😒`,
+        message: `An account already exists with this ${field}`,
       });
     }
 
@@ -257,7 +262,6 @@ export const forgotPassword = async (req, res, next) => {
   }
 };
 
-
 export const resetPassword = async (req, res, next) => {
   const { token } = req.params;
   const { password, confirmPassword } = req.body;
@@ -315,8 +319,6 @@ export const resetPassword = async (req, res, next) => {
     });
   }
 };
-
-
 export const getAllUsers = async (req, res) => {
   try {
     const users = await userModel
@@ -335,9 +337,7 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
-
 //get current user
-
 export const getCurrentUser = async (req, res) => {
   try {
     const user = await userModel.findById(req.user.id).select("-password");
