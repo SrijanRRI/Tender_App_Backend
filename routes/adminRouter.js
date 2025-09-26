@@ -2,7 +2,6 @@ import express from "express";
 import { jwtAuth } from "../middleware/jwtAuth.js";
 import {
   getPendingApprovals,
-  approveUser,
   rejectUser,
   getApprovedTransportUsers,
   getAllTenders,

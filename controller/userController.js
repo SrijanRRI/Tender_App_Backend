@@ -48,7 +48,6 @@ export const login = async (req, res) => {
     // Generate token (include isApproved if needed in middleware)
     const token = user.jwtToken();
 
-
     // 🔐 Cookie options for deployment
     const cookieOptions = {
       httpOnly: true,
@@ -76,7 +75,8 @@ export const login = async (req, res) => {
 };
 
 export const signup = async (req, res) => {
-  const { name, email, phone, password, confirmPassword, role, gstn } = req.body;
+  const { name, email, phone, password, confirmPassword, role, gstn } =
+    req.body;
 
   if (!name || !email || !phone || !password || !confirmPassword) {
     return res.status(400).json({
@@ -122,7 +122,10 @@ export const signup = async (req, res) => {
       phone,
       password,
       role: role || "user",
-      gstn: gstn ? gstn.trim().toUpperCase() : undefined, // schema handles regex validation
+      // only set gstn when provided AND role is transportUser
+      ...(role === "transportUser" && gstn
+        ? { gstn: gstn.trim().toUpperCase() }
+        : {}), // schema handles regex validation
     });
 
     const result = await userInfo.save();
@@ -221,14 +224,13 @@ export const forgotPassword = async (req, res, next) => {
     const forgotPasswordToken = user.getForgotPasswordToken();
     console.log(forgotPasswordToken);
 
-   await userModel.updateOne(
-  { _id: user._id },
-  {
-    forgotPasswordToken: user.forgotPasswordToken,
-    forgotPasswordExpiryDate: user.forgotPasswordExpiryDate,
-  }
-);
-
+    await userModel.updateOne(
+      { _id: user._id },
+      {
+        forgotPasswordToken: user.forgotPasswordToken,
+        forgotPasswordExpiryDate: user.forgotPasswordExpiryDate,
+      }
+    );
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
