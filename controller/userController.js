@@ -258,7 +258,6 @@ export const forgotPassword = async (req, res, next) => {
 };
 
 
-
 export const resetPassword = async (req, res, next) => {
   const { token } = req.params;
   const { password, confirmPassword } = req.body;

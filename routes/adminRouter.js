@@ -7,13 +7,15 @@ import {
   getApprovedTransportUsers,
   getAllTenders,
   getRankedBestQuotationsForAllTenders,
+  approveUserTwoStep,
 } from "../controller/adminController.js";
 
 const adminRouter = express.Router();
 
 // Admin routes for user approval
 adminRouter.get("/pending-approvals", getPendingApprovals);
-adminRouter.put("/approve-user/:userId", approveUser);
+// adminRouter.put("/approve-user/:userId", approveUser);
+adminRouter.put("/users/:userId/approve",jwtAuth,approveUserTwoStep)
 adminRouter.delete("/reject-user/:userId", rejectUser);
 adminRouter.get("/transport-users", getApprovedTransportUsers);
 adminRouter.get("/all-tender", getAllTenders);

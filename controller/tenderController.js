@@ -136,8 +136,6 @@ export const createTender = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
 // ✅ 2. Finalize Tender
 export const finalizeTender = async (req, res) => {
   try {
@@ -291,8 +289,6 @@ export const finalizeTender = async (req, res) => {
   }
 };
 
-
-
 // ✅ 3. Get All Tenders Created by RR User — pagination only
 
 export const getAllTendersByRRUser = async (req, res) => {
@@ -332,9 +328,6 @@ export const getAllTendersByRRUser = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
-
 
 // ✅ 4. Get Tenders Assigned to a Transporter (excluding already quoted ones)
 
@@ -591,7 +584,6 @@ export const deleteTender = async (req, res) => {
 };
 
 // ✅ Get Quotation History for Transporter
-
 export const getQuotationHistoryForTransporter = async (req, res) => {
   try {
     const transporterId = new mongoose.Types.ObjectId(req.user.id);
@@ -690,7 +682,7 @@ export const getQuotationHistoryForTransporter = async (req, res) => {
   }
 };
 
-//all finalized tenders
+// ✅ all finalized tenders
 
 // export const getAllFinalizedTendersWithQuotations = async (req, res) => {
 //   try {
