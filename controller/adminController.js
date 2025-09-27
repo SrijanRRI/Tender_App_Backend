@@ -34,16 +34,22 @@ export const approveUserTwoStep = async (req, res) => {
   const approverRole = req.user?.role; // "admin", etc.
 
   if (!userId) {
-    return res.status(400).json({ success: false, message: "User ID is required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "User ID is required" });
   }
   if (approverRole !== "admin") {
-    return res.status(403).json({ success: false, message: "Only admins can approve" });
+    return res
+      .status(403)
+      .json({ success: false, message: "Only admins can approve" });
   }
 
   try {
     const target = await userModel.findById(userId);
     if (!target) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (target.isApproved) {
@@ -132,7 +138,7 @@ export const approveUserTwoStep = async (req, res) => {
           "approvals.finalizedAt": { $ne: null },
           $or: [
             { "approvals.notifiedAt": { $exists: false } }, // if field didn't exist yet
-            { "approvals.notifiedAt": null },               // or still null
+            { "approvals.notifiedAt": null }, // or still null
           ],
         },
         { $set: { "approvals.notifiedAt": new Date() } },
@@ -186,9 +192,9 @@ export const approveUserTwoStep = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: out.isApproved
-        ? (shouldSendEmail
-            ? "User fully approved and notified"
-            : `User fully approved (${currentApprovals}/${required})`)
+        ? shouldSendEmail
+          ? "User fully approved and notified"
+          : `User fully approved (${currentApprovals}/${required})`
         : `Admin approval recorded (${currentApprovals}/${required})`,
       data: {
         id: out._id,
@@ -394,7 +400,6 @@ export const getAllTenders = async (req, res) => {
 export const getRankedBestQuotationsForAllTenders = async (req, res) => {
   try {
     const tenders = await Tender.find().sort({ createdAt: -1 });
-
     const tenderReports = [];
 
     for (const tender of tenders) {
@@ -406,7 +411,13 @@ export const getRankedBestQuotationsForAllTenders = async (req, res) => {
       const bestByTransporter = new Map();
 
       for (const q of quotations) {
+        // 🚨 Skip if transportUser or _id is missing
+        if (!q.transportUser?._id) {
+          continue;
+        }
+
         const userId = q.transportUser._id.toString();
+
         if (!bestByTransporter.has(userId)) {
           bestByTransporter.set(userId, q);
         } else {
