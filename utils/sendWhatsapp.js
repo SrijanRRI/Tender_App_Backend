@@ -26,7 +26,7 @@ export async function sendWhatsAppTemplate(toPhoneE164, values) {
             {
               type: "image",
               image: {
-                link: "https://i.postimg.cc/90J3tYDM/logourl.png",
+                link: "https://i.postimg.cc/N0sVbVTh/Logi-Yatra-Logo.png",
               },
             },
           ],
@@ -66,6 +66,7 @@ export async function sendWhatsAppTemplate(toPhoneE164, values) {
   };
   try {  
     const response = await axios.post(url, data, { headers });
+    console.log('response in whatsapp' , response.data)
     return response.data;
   } catch (error) {
     console.error(
